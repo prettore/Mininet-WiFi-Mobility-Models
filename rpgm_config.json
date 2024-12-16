@@ -1,0 +1,11 @@
+{
+    "num_groups": 3,
+    "num_nodes": 5,
+    "simulation_time": 50,
+    "time_step": 1,
+    "pause_prob": 0.3,
+    "group_switch_prob": 0.2,
+    "grid_size": 100,
+    "leader_speed": 2.0,
+    "member_deviation": 3.0
+}

@@ -1,0 +1,11 @@
+{
+    "u": 3,
+    "v": 2,
+    "min_speed": 0.5,
+    "max_speed": 2.0,
+    "pause_prob": 0.3,
+    "max_pause_time": 2.0,
+    "nodes": 5,
+    "simulation_time": 50,
+    "time_step": 1
+}

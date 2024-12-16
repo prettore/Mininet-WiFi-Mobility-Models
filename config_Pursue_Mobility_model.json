@@ -1,0 +1,29 @@
+{
+  "simulation": {
+    "acceleration_factor": 0.1,        
+    "random_magnitude": 5.0,           
+    "max_simulation_time": 100,        
+    "time_step": 1,                    
+    "trace_file": "pursue_trace.csv"   
+  },
+  "target": {
+    "name": "Target",                 
+    "initial_x": 25,                   
+    "initial_y": 25,                   
+    "max_speed": 1.0                  
+  },
+  "pursuers": [
+    {
+      "name": "Pursuer1",               
+      "max_speed": 1.2                  
+    },
+    {
+      "name": "Pursuer2",               
+      "max_speed": 1.3                  
+    },
+    {
+      "name": "Pursuer3",               
+      "max_speed": 1.1                  
+    }
+  ]
+}

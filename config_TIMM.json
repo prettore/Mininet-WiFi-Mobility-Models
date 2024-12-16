@@ -1,0 +1,22 @@
+{
+  "building_graph": "building_graph.txt",
+  "distance_limit": 5.0,
+  "nodes": [
+    {
+      "name": "Node1",
+      "max_speed": 2.0,
+      "pause_probability": 0.2,
+      "door_opening_time": 3
+    },
+    {
+      "name": "Node2",
+      "max_speed": 1.5,
+      "pause_probability": 0.1,
+      "door_opening_time": 2
+    }
+  ],
+  "simulation": {
+    "max_steps": 100,
+    "trace_file": "trace.csv"
+  }
+}

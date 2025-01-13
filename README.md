@@ -24,14 +24,9 @@ Files Required config_Manhattan.json: Contains the simulation parameters, such a
 Create or update the config_Manhattan.json file with your desired parameters. Run the script. After execution: A trace file trace_file.txt will be generated.
 The simulation animation will be displayed.
 Output
-Trace File:
-Example output in trace_file.txt:
-python
-Copy code
-# Time NodeID X Y
-0.00 0 0 0
-0.00 1 0 0
-...
+Trace File: Example output in trace_file.txt:
+
+
 
 
 **RPGM (Reference Point Group Mobility) Model**
@@ -72,7 +67,7 @@ Output
 1. Trace File
 The rpgm_trace.txt contains a log of node movements:
 
-# Time NodeID X Y
+  Time NodeID X Y
 0.00 0 50.00 50.00
 0.00 1 50.00 50.00
 1.00 0 52.00 49.50

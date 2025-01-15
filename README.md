@@ -66,13 +66,6 @@ Run the script and after running a trace file (rpgm_trace.txt) will be created i
 Output
 1. Trace File
 The rpgm_trace.txt contains a log of node movements:
-
-  Time NodeID X Y
-0.00 0 50.00 50.00
-0.00 1 50.00 50.00
-1.00 0 52.00 49.50
-1.00 1 51.20 50.80
-...
 2. Visualization
 An animation shows nodes moving across the grid in real-time, with group behavior clearly visible.
 
@@ -131,13 +124,7 @@ Create or edit the config_SWIM.json file with your desired parameters.
 
 Output
 1. Trace File
-The trace file (trace.txt) logs node positions at each time step:
-
-0   0   50.0   50.0
-0   1   48.3   52.1
-1   0   51.2   49.7
-1   1   49.0   53.0
-...
+The trace file (trace.txt) logs node positions at each time step
 
 3. Visualization
 An animated plot shows: Nodes (blue points) moving across the grid. Attraction points (red points) as stationary targets.

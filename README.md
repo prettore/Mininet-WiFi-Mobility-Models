@@ -257,7 +257,7 @@ The model:
 
 ## 🚀 Model Explanation
 
-### 🔹 `UMTSManhattanGrid` Class
+### 🔹 `ManhattanGrid` Class
 This class defines the Manhattan Grid environment and handles:
 1. **Grid Creation** → Defines a `u × v` street grid.
 2. **Node Initialization** → Places nodes at `(0, 0)` initially.

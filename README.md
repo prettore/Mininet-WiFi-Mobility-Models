@@ -139,8 +139,117 @@ python Pursue_mobility_model.py
 
 
 
-**Tactical Indoor Mobility Model (TIMM)**
-TIMM provides an implementation of the Tactical Indoor Mobility Model (TIMM), which simulates realistic tactical movement of nodes (e.g., personnel or robots) within an indoor environment represented by a graph. Nodes dynamically move through the graph, accounting for constraints such as distance limits, pauses, and door-opening delays, while generating trace files and visualizations for analysis.
+# TIMM: Tactical Indoor Mobility Model
+
+## 📌 Overview
+TIMM simulates tactical movement inside a **building graph** while considering constraints like:
+- **Speed limits**
+- **Pausing probabilities**
+- **Door opening times**
+- **Distance limits** (to control movement range)
+
+The model dynamically adjusts based on these factors and generates a **movement trace file** for visualization.
+
+---
+
+## 🚀 Model Explanation
+
+### 🔹 `Node` Class
+Each entity in the simulation is represented as a `Node`, which has:
+- **Position** (`position`): Current location in the graph.
+- **Speed** (`max_speed`): Maximum movement speed.
+- **Pausing Probability** (`pause_probability`): Probability of stopping at a node.
+- **Door Opening Time** (`door_opening_time`): Time spent at doors before proceeding.
+
+#### 🏃 Movement Logic
+- A node decides whether to **pause** or move based on `pause_probability`.
+- Movement is constrained by **distance limits** (if set).
+- The node selects a **random neighboring node** within constraints and moves.
+
+---
+
+### 🔹 `BuildingGraph` Class
+Manages the **graph-based layout** of the building:
+- **Nodes** represent locations (rooms, hallways).
+- **Edges** define possible movement paths.
+- **Distance Nodes** (`dynamically_add_distance_nodes`) are inserted to enforce **distance limits**.
+
+#### ⚙️ Key Functions:
+- `add_vertex(...)` → Adds a node with its neighbors.
+- `get_start_vertex()` → Identifies the starting position.
+- `dynamically_add_distance_nodes(...)` → Adds intermediate nodes if edges exceed `distance_limit`.
+
+---
+
+## 🛠️ Important Features in the Code
+
+### 📌 `parse_building_graph_file(file_path)`
+Parses a **text-based** building graph definition:
+- Reads **node positions** and **edges**.
+- Identifies **StartVertex** as the simulation's entry point.
+
+### 📌 `generate_trace_file(...)`
+Generates a **trace file** containing movement history:
+- Nodes start at **StartVertex**.
+- Movement is recorded for `max_steps`.
+- Outputs a **CSV trace file** with (`time`, `node`, `x`, `y`).
+
+### 📌 `visualize_trace_file(...)`
+Creates an **animated visualization** of node movements:
+- Uses **Matplotlib** for graphical representation.
+- Colors **different nodes uniquely**.
+- Animates movement over time.
+
+---
+
+## 🔢 Input Parameters (from `config_TIMM.json`)
+| Parameter               | Description                          | Example Value |
+|-------------------------|--------------------------------------|--------------|
+| `building_graph`        | File containing graph definition    | `building_graph.txt` |
+| `distance_limit`        | Maximum allowed move distance       | `5.0` |
+| `nodes[].name`          | Name of the node                    | `"Node1"` |
+| `nodes[].max_speed`     | Max movement speed                  | `2.0` |
+| `nodes[].pause_probability` | Chance to pause at each step | `0.2` |
+| `nodes[].door_opening_time` | Time spent at doors       | `3` |
+| `simulation.max_steps`  | Total simulation steps              | `100` |
+| `simulation.trace_file` | Output CSV file name                | `"trace.csv"` |
+
+---
+
+## 📤 Output
+- **Trace File (`trace.csv`)**  
+  - Records movements over time in CSV format:
+    ```csv
+    time,node,x,y
+    0,Node1,10,5
+    1,Node1,11,6
+    2,Node1,12,6
+    ```
+- **Animated Visualization**
+  - Displays **movement paths** dynamically using Matplotlib.
+
+---
+
+## 🔄 Execution Flow
+1️⃣ **Parse Configuration (`config_TIMM.json`)**  
+2️⃣ **Load Building Graph (`building_graph.txt`)**  
+3️⃣ **Dynamically Adjust Graph (if needed)**  
+4️⃣ **Initialize Nodes & Assign Start Position**  
+5️⃣ **Simulate Movement for `max_steps`**  
+6️⃣ **Generate Trace File (`trace.csv`)**  
+7️⃣ **Visualize the Movement**  
+
+---
+
+## ✅ Summary
+TIMM is a **graph-based tactical mobility model** that:
+✔ Simulates movement **within constrained environments**  
+✔ Adapts to **distance limits** dynamically  
+✔ Outputs a **trace file** for analysis  
+✔ **Visualizes** movements in an animated format  
+
+---
+
 
 **Manhattan Grid Model**
 This Python script implements a simulation of node movement in a Manhattan Grid model, commonly used in wireless network research to simulate urban environments. Below is a detailed explanation of the code:

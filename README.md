@@ -1,6 +1,141 @@
 # mobility_models_in_python
-**Pursue Mobility Model**
-The Python implementation of the Pursue Mobility Model simulates a realistic node pursuit scenario in a 2D space. The model includes support for dynamic target movement, multiple pursuers, random environmental effects, and trace file generation for analysis or visualization. The implementation is extensible and configurable through a JSON file, allowing users to adapt the model to various scenarios. Some of the features included here are Dynamic Target Movement where the target moves using a Random Waypoint model and dynamically adjusts its path based on randomly generated waypoints, Realistic Pursuit Mechanics where Pursuers calculate directional vectors toward the target and move at variable speeds influenced by random environmental factors. Random deviations in direction simulate real-world conditions, Trace File Generation which logs all node movements to a trace file (.csv) for easy analysis or compatibility with visualization tools. It also includes Configurable Parameters with which we can  easily adjust target and pursuer behavior, acceleration factors, and randomization through a JSON configuration file (config_Pursue.json). Animation helps to visualize the simulation using a dynamic matplotlib-based animation, showing node paths and real-time updates.
+# Pursue Mobility Model
+
+This project simulates a **pursuit scenario** where multiple **pursuers** chase a **target** in a 2D space. The target moves randomly, and pursuers coordinate to chase it using a combination of **aggressive, group-based, and random pursuit behaviors**.
+
+## 📌 Model Overview
+
+- **Target** moves randomly in a bounded area, selecting new waypoints.
+- **Pursuers** attempt to chase the target using:
+  - **Aggressive movement** toward the target.
+  - **Group-based coordination** to stay close to other pursuers.
+  - **Random variations** to avoid predictable movement.
+
+The simulation is visualized with **Matplotlib animations**, where:
+- The **target** is represented as a red circle (`ro`).
+- The **pursuers** are represented as blue circles (`bo`).
+- Movement traces are drawn as fading lines.
+
+---
+
+## 🚀 Key Features
+
+- **Random Waypoint Movement** for the target.
+- **Adaptive Pursuit Strategy** for the pursuers:
+  - Moves towards the target.
+  - Adjusts position relative to other pursuers.
+  - Introduces randomness to avoid clustering.
+- **JSON Configuration Support** (`config_Pursue.json`).
+- **Real-time Animation** using `matplotlib.animation`.
+
+---
+
+## 📥 Input Parameters
+
+The simulation parameters are **configured via JSON** (`config_Pursue.json`):
+
+### 🔹 Simulation Settings
+| Parameter           | Description                                  | Default Value |
+|---------------------|----------------------------------------------|--------------|
+| `max_simulation_time` | Number of frames to simulate              | `100`        |
+| `time_step`         | Interval between frames (in seconds)        | `1`          |
+| `trace_file`        | Output file for trace data                  | `"pursue_trace.csv"` |
+| `random_seed`       | Seed for reproducibility                    | `1736847152537` |
+
+### 🔹 Target Configuration
+| Parameter         | Description                         | Default Value |
+|------------------|-------------------------------------|--------------|
+| `name`          | Name of the target                  | `"Target"`   |
+| `initial_x`     | Initial X position                 | `250.0`      |
+| `initial_y`     | Initial Y position                 | `250.0`      |
+| `max_speed`     | Maximum speed of the target        | `1.5`        |
+| `waypoint_bounds` | Movement boundaries               | `[0,500]` for X & Y |
+
+### 🔹 Pursuer Configuration
+Each pursuer has:
+| Parameter  | Description                     |
+|-----------|---------------------------------|
+| `name`    | Name of the pursuer             |
+| `max_speed` | Maximum speed of the pursuer  |
+
+Example:
+```json
+"pursuers": [
+  { "name": "Pursuer1", "max_speed": 1.5 },
+  { "name": "Pursuer2", "max_speed": 1.4 }
+]
+
+## 📤 Expected Output
+
+- **Real-time animation** showing the target and pursuers moving in a 2D space.
+- A **CSV file (`pursue_trace.csv`)** logging movement traces.
+- The animation visualization includes:
+  - **A red dot (`ro`) representing the target**, with a fading red trace.
+  - **Blue dots (`bo`) representing the pursuers**, with blue traces.
+  - Continuous updates showing how pursuers dynamically adjust their movement.
+
+---
+
+## 🛠 How It Works
+
+### 1️⃣ Target Movement
+- Moves towards a **randomly chosen waypoint**.
+- When it reaches its destination, it picks a **new waypoint**.
+- Speed is constrained by `max_speed` from the JSON configuration.
+
+### 2️⃣ Pursuer Movement
+- Each pursuer:
+  - Moves towards the **target** based on an **acceleration factor**.
+  - Adjusts movement based on **group dynamics** (staying close to other pursuers).
+  - Has a **randomized component** to prevent deterministic clustering.
+
+### 3️⃣ Animation & Trace Updates
+- **Each frame updates positions** of all entities.
+- **Traces** (past movements) are stored and visualized.
+- **Matplotlib animation** is used for real-time rendering.
+
+---
+
+## 📌 Example Run
+
+To run the simulation, use:
+
+```bash
+python Pursue_mobility_model.py
+
+## 📜 Code Structure
+
+### 🔹 Position Class  
+> **Represents a (x, y) position with distance calculations.**  
+
+---
+
+### 🔹 Target Class  
+> **Moves randomly using a waypoint approach.**  
+> **Updates position based on speed constraints.**  
+
+---
+
+### 🔹 Pursuer Class  
+> **Pursues the target using aggressive, group, and random movement.**  
+> **Adjusts position based on acceleration factors.**  
+
+---
+
+### 🔹 update() Function  
+> **Updates target and pursuer positions per frame.**  
+> **Plots movement traces.**  
+## 📈 Visualization Example  
+
+> 🔹 **The actual visualization will have:**  
+> - A **moving red dot** 🟥 representing the **target**.  
+> - **Blue dots** 🔵 representing the **pursuers**, chasing the target.  
+> - **Fading traces** to show movement history.  
+
+
+
+
+
 
 **Tactical Indoor Mobility Model (TIMM)**
 TIMM provides an implementation of the Tactical Indoor Mobility Model (TIMM), which simulates realistic tactical movement of nodes (e.g., personnel or robots) within an indoor environment represented by a graph. Nodes dynamically move through the graph, accounting for constraints such as distance limits, pauses, and door-opening delays, while generating trace files and visualizations for analysis.

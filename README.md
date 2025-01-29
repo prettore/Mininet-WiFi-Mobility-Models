@@ -242,10 +242,10 @@ Creates an **animated visualization** of node movements:
 ---
 
 
-# 🏙️ UMTS Manhattan Grid Simulation
+# 🏙️ Manhattan Grid Simulation
 
 ## 📌 Overview
-The **UMTS Manhattan Grid Simulation** models the movement of nodes in a **Manhattan-like street grid**. Each node moves according to a **random mobility pattern** with configurable speed, pausing probability, and simulation duration.
+The **Manhattan Grid Simulation** models the movement of nodes in a **Manhattan-like street grid**. Each node moves according to a **random mobility pattern** with configurable speed, pausing probability, and simulation duration.
 
 The model:
 - Defines a **grid-based movement pattern**.
@@ -344,14 +344,25 @@ The simulation provides a **graphical representation** of node movements:
 
 ## 🔄 Execution Flow
 
-The simulation follows these steps:
+1️⃣ **Load Configuration**  
+   - Read simulation parameters from `config_Manhattan.json`.
 
-1️⃣ Load Configuration (config_Manhattan.json)
-2️⃣ Create Manhattan Grid (create_grid())
-3️⃣ Initialize Nodes (initialize_nodes())
-4️⃣ Run Simulation (simulate())
-5️⃣ Generate Movement Trace (generate_trace_file())
-6️⃣ Animate Movement (animate_simulation_with_paths()) use git hub markers aand format
+2️⃣ **Create Manhattan Grid**  
+   - Generate a `u × v` street grid using `create_grid()`.
+
+3️⃣ **Initialize Nodes**  
+   - Place all nodes at **(0,0)** with random speed using `initialize_nodes()`.
+
+4️⃣ **Run Simulation**  
+   - Move nodes step by step and record movements with `simulate()`.
+
+5️⃣ **Generate Movement Trace**  
+   - Save movement history to `trace_file.txt` using `generate_trace_file()`.
+
+6️⃣ **Animate Movement**  
+   - Display an **animated visualization** using `animate_simulation_with_paths()`.
+
+
 
 
 

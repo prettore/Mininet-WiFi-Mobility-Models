@@ -367,8 +367,59 @@ The simulation provides a **graphical representation** of node movements:
 
 
 
-**RPGM (Reference Point Group Mobility) Model**
-This Python script simulates the Reference Point Group Mobility (RPGM) model, which is commonly used in wireless and mobile network research to model the movement of nodes in a dynamic, group-based structure. The simulation allows for configurable parameters, trace generation, and visualization of node movement.
+# RPGM Model Explanation
+
+The **RPGMModel** is a simulation model representing nodes grouped into dynamic social or spatial groups. Each group has a leader and several member nodes. The model simulates the movement of these nodes over time, with the option for group members to dynamically switch groups. Additionally, each node's movement is influenced by the leader's position and specific behaviors like pausing or deviating from the leader’s movement.
+
+## Key Code Features
+
+### 1. **Configuration Loading**
+   - The model loads parameters from a JSON configuration file (`rpgm_config.json`). The configuration file allows easy customization of parameters for the simulation.
+
+### 2. **Initialization of Groups and Nodes**
+   - The model initializes multiple groups. Each group has:
+     - A **leader**, which moves within the grid.
+     - **Members**, whose positions deviate from the leader.
+   - Leaders are positioned randomly within the grid at the start.
+
+### 3. **Leader Movement**
+   - The leader moves within the grid by a specified speed, but with a probability (`pause_prob`), it pauses for a given time step.
+   - Movement is bounded by the grid size to avoid going out of bounds.
+
+### 4. **Member Movement**
+   - Members move around their leader with a deviation in position. This allows them to stay close to their leader but with slight random movement.
+
+### 5. **Group Switching**
+   - Members have a probability (`group_switch_prob`) of switching groups, which adds a dynamic element to the simulation.
+
+### 6. **Trace File Generation**
+   - The simulation records the positions of all nodes (leaders and members) over time and generates a trace file (`rpgm_trace.txt`), which logs the time, node ID, and position (X, Y) of each node.
+
+### 7. **Visualization**
+   - The model visualizes the node movement using `matplotlib`. It creates an animated plot showing how nodes move within the grid.
+
+### 8. **Simulation Logic**
+   - The `simulate()` method runs the model's logic over the specified simulation time (`simulation_time`), updating the position of nodes and recording them.
+
+---
+
+## Input Parameters
+
+The simulation is governed by the following parameters, which are specified in the JSON configuration file (`rpgm_config.json`):
+
+```json
+{
+  "num_groups": 3,
+  "num_nodes": 5,
+  "simulation_time": 50,
+  "time_step": 1,
+  "pause_prob": 0.3,
+  "group_switch_prob": 0.2,
+  "grid_size": 100,
+  "leader_speed": 2.0,
+  "member_deviation": 3.0
+}
+
 
 **Features**
 Dynamic Group-Based Mobility: Nodes are organized into groups, with each group having a leader and several members. Leaders dictate the general movement of the group, while members move relative to their leader.

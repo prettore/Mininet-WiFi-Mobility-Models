@@ -1,4 +1,4 @@
-# mobility_models_in_python
+# Mobility_models_in_python
 # Pursue Mobility Model
 
 This project simulates a **pursuit scenario** where multiple **pursuers** chase a **target** in a 2D space. The target moves randomly, and pursuers coordinate to chase it using a combination of **aggressive, group-based, and random pursuit behaviors**.

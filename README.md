@@ -63,7 +63,7 @@ Example:
 "pursuers": [
   { "name": "Pursuer1", "max_speed": 1.5 },
   { "name": "Pursuer2", "max_speed": 1.4 }
-]
+]´´´
 
 ## 📤 Expected Output
 

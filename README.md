@@ -242,26 +242,116 @@ Creates an **animated visualization** of node movements:
 ---
 
 
-**Manhattan Grid Model**
-This Python script implements a simulation of node movement in a Manhattan Grid model, commonly used in wireless network research to simulate urban environments. Below is a detailed explanation of the code:
-**Key Features**
-Configurable Grid Model:The grid's dimensions and simulation parameters are defined in a JSON configuration file (config_Manhattan.json).
-Node Initialization: Nodes are initialized at the (0, 0) position on the grid and are assigned a random speed within a configurable range.
-Movement Simulation: Nodes move in a Manhattan grid pattern, constrained to horizontal and vertical streets. Movement direction is chosen randomly (up, down, left, or right). Nodes may pause randomly based on a configurable probability and duration.
-Trace Generation: A trace file (trace_file.txt) is created, documenting the time, node ID, and position for each time step.
-Visualization: The simulation can be visualized using matplotlib, showing node positions on the grid at each time step.
-**How the Code Works**
-Initialization: The UMTSManhattanGrid class is initialized with parameters from a JSON file. These parameters include grid size (u, v), number of nodes, speed range, pause probabilities, and simulation duration.
-Node Movement: The move_node method updates each node's position and speed. If a node pauses, its movement is delayed.
-Simulation Execution: The simulate method runs the simulation over the specified duration and time step, recording each node's position at every step.
-Trace File Generation: The generate_trace_file method outputs a text file containing the simulation data.
-Visualization: The animate_simulation function uses matplotlib.animation to visually represent the nodes moving on the grid.
-Files Required config_Manhattan.json: Contains the simulation parameters, such as: u and v: Grid size. min_speed and max_speed: Speed range of nodes. pause_prob: Probability of a node pausing. max_pause_time: Maximum pause duration. nodes: Number of nodes. simulation_time: Total simulation duration. time_step: Time step for the simulation.
-**How to Run the Code**
-Create or update the config_Manhattan.json file with your desired parameters. Run the script. After execution: A trace file trace_file.txt will be generated.
-The simulation animation will be displayed.
-Output
-Trace File: Example output in trace_file.txt:
+# 🏙️ UMTS Manhattan Grid Simulation
+
+## 📌 Overview
+The **UMTS Manhattan Grid Simulation** models the movement of nodes in a **Manhattan-like street grid**. Each node moves according to a **random mobility pattern** with configurable speed, pausing probability, and simulation duration.
+
+The model:
+- Defines a **grid-based movement pattern**.
+- Simulates node **motion with speed constraints**.
+- Generates a **trace file** with recorded positions over time.
+- **Visualizes** node movement with an animated plot.
+
+---
+
+## 🚀 Model Explanation
+
+### 🔹 `UMTSManhattanGrid` Class
+This class defines the Manhattan Grid environment and handles:
+1. **Grid Creation** → Defines a `u × v` street grid.
+2. **Node Initialization** → Places nodes at `(0, 0)` initially.
+3. **Movement Simulation** → Moves nodes in **random** directions.
+4. **Trace File Generation** → Logs movements into a `.txt` file.
+5. **Visualization** → Animates node movement in a **2D grid**.
+
+---
+
+## 🛠️ Important Features in the Code
+
+### 📌 `create_grid()`
+- Creates a **Manhattan-style grid** using `u` (horizontal) and `v` (vertical) blocks.
+- Stores all **grid points** as tuples `(x, y)`.
+
+### 📌 `initialize_nodes()`
+- Initializes all **nodes** at **position `(0,0)`**.
+- Assigns **random speeds** between `min_speed` and `max_speed`.
+
+### 📌 `move_node(node)`
+- Randomly chooses a movement **direction** (`up, down, left, right`).
+- Checks **grid boundaries** before moving.
+- Applies **pause probability** (`pause_prob`), causing nodes to **pause** for a random duration.
+
+### 📌 `simulate()`
+- Runs the simulation for `simulation_time / time_step` iterations.
+- Moves each node per time step and records its position.
+- Appends movement history to `trace`.
+
+### 📌 `generate_trace_file(file_name)`
+- Saves the movement **trace file** in the following format:
+    ```txt
+    # Time NodeID X Y
+    0.00 0 0 0
+    1.00 0 1 0
+    2.00 0 1 1
+    ```
+
+### 📌 `animate_simulation_with_paths()`
+- **Visualizes the movement** using `matplotlib.animation`.
+- Displays **node movement paths** in **red**.
+- Plots **scatter points** to show live positions.
+
+---
+
+## 🔢 Input Parameters (from `config_Manhattan.json`)
+
+| Parameter         | Description                               | Example Value |
+|------------------|-----------------------------------------|--------------|
+| `u`             | Number of **horizontal streets**        | `5` |
+| `v`             | Number of **vertical streets**          | `5` |
+| `min_speed`     | Minimum speed of nodes                  | `1.0` |
+| `max_speed`     | Maximum speed of nodes                  | `5.0` |
+| `pause_prob`    | Probability of a node pausing          | `0.2` |
+| `max_pause_time`| Maximum pause time (seconds)           | `2.0` |
+| `nodes`         | Number of moving nodes                 | `1` |
+| `simulation_time` | Total simulation duration (seconds)   | `50` |
+| `time_step`     | Time step between movements (seconds)  | `1` |
+
+---
+
+## 📤 Output
+
+### 📄 **Trace File (`trace_file.txt`)**
+Stores the movement history of each node:
+```txt
+# Time NodeID X Y
+0.00 0 0 0
+1.00 0 1 0
+2.00 0 1 1
+3.00 0 2 1
+...
+```
+
+## 🎥 Visualization
+
+The simulation provides a **graphical representation** of node movements:
+
+- 🟦 **Scatter plot** → Shows the **current positions** of nodes.
+- 🔴 **Red path lines** → Represent the **movement history** of nodes.
+- 📏 **Grid background** → Represents the **Manhattan street layout**.
+
+---
+
+## 🔄 Execution Flow
+
+The simulation follows these steps:
+
+1️⃣ Load Configuration (config_Manhattan.json)
+2️⃣ Create Manhattan Grid (create_grid())
+3️⃣ Initialize Nodes (initialize_nodes())
+4️⃣ Run Simulation (simulate())
+5️⃣ Generate Movement Trace (generate_trace_file())
+6️⃣ Animate Movement (animate_simulation_with_paths()) use git hub markers aand format
 
 
 

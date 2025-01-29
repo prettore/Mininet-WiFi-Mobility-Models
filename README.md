@@ -103,6 +103,7 @@ To run the simulation, use:
 
 ```bash
 python Pursue_mobility_model.py
+```
 
 ## 📜 Code Structure
 

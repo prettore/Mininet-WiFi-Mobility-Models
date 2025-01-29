@@ -237,16 +237,7 @@ Creates an **animated visualization** of node movements:
 4️⃣ **Initialize Nodes & Assign Start Position**  
 5️⃣ **Simulate Movement for `max_steps`**  
 6️⃣ **Generate Trace File (`trace.csv`)**  
-7️⃣ **Visualize the Movement**  
-
----
-
-## ✅ Summary
-TIMM is a **graph-based tactical mobility model** that:
-✔ Simulates movement **within constrained environments**  
-✔ Adapts to **distance limits** dynamically  
-✔ Outputs a **trace file** for analysis  
-✔ **Visualizes** movements in an animated format  
+7️⃣ **Visualize the Movement**   
 
 ---
 

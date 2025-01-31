@@ -512,6 +512,7 @@ The trace file logs node movements over time in a tab-separated format:
 2       0       25.0    47.1
 2       1       14.2    87.5
 ...
+```
 This file is useful for analyzing movement patterns or integrating with network simulation tools.
 
 ## Statistical Validation
@@ -525,7 +526,7 @@ The model tracks how often nodes visit each attraction point:
 --- Model Validation ---
 Hotspot Visit Distribution:
 [35 42 50 28 45]
-
+```
 
 - Each number represents the number of times a particular attraction point was visited.
 - This helps in understanding which locations are more frequently accessed.

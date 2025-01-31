@@ -420,6 +420,25 @@ The simulation is governed by the following parameters, which are specified in t
   "member_deviation": 3.0
 }
 ```
+This configuration would result in an animated simulation of nodes (leaders and members) moving around a grid, potentially pausing or switching groups as per the specified probabilities. The trace file will log every node's position over the simulation's 50 time units.
+
+## Output
+
+### 1. **Trace File**
+   - The model generates a trace file named `rpgm_trace.txt`, which logs the movement of each node (leaders and members) over time. The trace file is formatted as follows:
+     ```
+     # Time NodeID X Y
+     0.00 1 34.56 78.90
+     1.00 1 36.23 80.45
+     1.00 2 35.67 77.12
+     ```
+
+### 2. **Visualization**
+   - An animated plot shows the movement of the nodes within the grid. The simulation is animated using `matplotlib.animation.FuncAnimation`, displaying the position of each node over time.
+   - The leader's position is typically a primary influence on its members, but they are also influenced by their own movement behavior.
+   
+---
+
 
 **Features**
 Dynamic Group-Based Mobility: Nodes are organized into groups, with each group having a leader and several members. Leaders dictate the general movement of the group, while members move relative to their leader.

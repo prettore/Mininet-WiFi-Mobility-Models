@@ -1,0 +1,11 @@
+{
+    "num_nodes": 10,
+    "area_size": 100,
+    "attraction_points": 5,
+    "beta": 0.7,
+    "speed_min": 1,
+    "speed_max": 5,
+    "steps": 200,
+    "trace_file": "trace.txt",
+    "prob_return_home": 0.3
+}

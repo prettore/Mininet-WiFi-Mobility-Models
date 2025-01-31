@@ -419,7 +419,7 @@ The simulation is governed by the following parameters, which are specified in t
   "leader_speed": 2.0,
   "member_deviation": 3.0
 }
-
+```
 
 **Features**
 Dynamic Group-Based Mobility: Nodes are organized into groups, with each group having a leader and several members. Leaders dictate the general movement of the group, while members move relative to their leader.

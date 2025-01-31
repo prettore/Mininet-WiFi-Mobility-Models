@@ -440,99 +440,114 @@ This configuration would result in an animated simulation of nodes (leaders and 
 ---
 
 
-**Features**
-Dynamic Group-Based Mobility: Nodes are organized into groups, with each group having a leader and several members. Leaders dictate the general movement of the group, while members move relative to their leader.
-Configurable Behavior: Easily adjustable parameters such as group size, node count, grid size, speeds, and more via a JSON configuration file.
-Dynamic Group Switching: Nodes can probabilistically switch between groups during the simulation.
-Trace File Generation: Outputs detailed trace logs of node movement for further analysis.
-Visualization: Real-time animation of node movements across the grid using matplotlib.
-**How It Works**
-1. Initialization - The RPGMModel class initializes the simulation with parameters from a JSON configuration file. These parameters include:
-Group Properties: Number of groups and nodes per group.
-Grid Size: The dimensions of the simulation area.
-Movement Settings: Speed of group leaders, member deviations, and pause probabilities.
-Simulation Settings: Total duration and time step for updates.
-2. Group Behavior - Each group has: A leader that moves randomly within the grid. Members that move relative to their leader with a defined deviation.
-3. Dynamic Group Switching - Nodes can switch between groups during the simulation, governed by a configurable probability.
-4. Trace Generation - A trace file (rpgm_trace.txt) is generated, logging: Time step, Node ID, Node position (X, Y)
-5. Visualization
-An animation shows the movement of nodes in real-time, with nodes appearing as points on the grid.
+# SWIM Mobility Model Explanation
 
-Parameters:
-num_groups: Number of groups.
-num_nodes: Number of nodes per group.
-simulation_time: Total simulation time (in seconds).
-time_step: Time step for simulation updates (in seconds).
-pause_prob: Probability that a leader pauses instead of moving.
-group_switch_prob: Probability of a node switching to a different group.
-grid_size: Dimensions of the grid (square grid).
-leader_speed: Maximum movement speed of group leaders.
-member_deviation: Range of deviation for members around their leader.
-How to Run the Simulation
-Create or edit the rpgm_config.json file with your desired parameters.
-Run the script and after running a trace file (rpgm_trace.txt) will be created in the working directory and also an animation of the simulation will be displayed.
-Output
-1. Trace File
-The rpgm_trace.txt contains a log of node movements:
-2. Visualization
-An animation shows nodes moving across the grid in real-time, with group behavior clearly visible.
+## Overview
+The **Small Worlds In Motion (SWIM) Mobility Model** simulates the movement of nodes in a 2D area, influenced by attraction points (hotspots). It models real-world movement patterns where entities move toward points of interest and sometimes return to a home location.
+
+---
+
+## Key Features
+- **Attraction-based movement**: Nodes move toward predefined attraction points based on probabilistic weights.
+- **Home location behavior**: Each node has a home point to which it occasionally returns.
+- **Statistical validation**: The model tracks visit frequencies and calculates average displacement.
+- **Trace generation**: A `trace.txt` file logs each node's movement over time.
+- **Visualization**: A matplotlib-based animation displays node movements.
+
+---
+
+## Key code features
+
+### 1. **Initialization (`__init__`)**
+   - Loads the configuration file containing parameters.
+   - Initializes random positions for nodes and attraction points.
+   - Assigns each node a home point and movement speed.
+
+### 2. **Node Movement (`move_node`)**
+   - Nodes move probabilistically toward attraction points based on distance.
+   - A fraction of movements return the node to its home location.
+   - Movements are normalized to ensure bounded, smooth transitions.
+
+### 3. **Simulation (`simulate`)**
+   - Runs for a specified number of steps.
+   - Updates positions and logs each node’s movements to a trace file.
+
+### 4. **Validation (`validate_model`)**
+   - Computes and prints:
+     - Hotspot visit distributions.
+     - Average displacement of nodes from their home locations.
+
+### 5. **Animation (`animate_trajectory`)**
+   - Uses `matplotlib.animation` to visualize node movements over time.
+
+---
+
+## Input Parameters (from `config_SWIM.json`)
+
+```json
+{
+  "num_nodes": 10,
+  "area_size": 100,
+  "attraction_points": 5,
+  "beta": 0.7,
+  "speed_min": 1,
+  "speed_max": 5,
+  "steps": 200,
+  "trace_file": "trace.txt",
+  "prob_return_home": 0.3
+}
+```
+
+## Output
+
+### 1. **Trace File (`trace.txt`)**
+The trace file logs node movements over time in a tab-separated format:
+
+```txt
+# Step    NodeID  X       Y
+0       0       23.5    45.6
+0       1       12.7    89.3
+1       0       24.1    46.2
+1       1       13.0    88.9
+2       0       25.0    47.1
+2       1       14.2    87.5
+...
+This file is useful for analyzing movement patterns or integrating with network simulation tools.
+
+## Statistical Validation
+
+After running the simulation, the model provides statistical insights into node movements.
+
+### **Hotspot Visit Distribution**
+The model tracks how often nodes visit each attraction point:
+
+```txt
+--- Model Validation ---
+Hotspot Visit Distribution:
+[35 42 50 28 45]
 
 
-**SWIM (Small World in Motion) Mobility Model**
-This Python script implements the Small World in Motion (SWIM) mobility model, which is widely used in mobile network simulations. SWIM mimics real-world human movement by combining attraction points with home-based behavior, allowing for statistical analysis and trajectory visualization.
+- Each number represents the number of times a particular attraction point was visited.
+- This helps in understanding which locations are more frequently accessed.
 
-**Features**
-Realistic Mobility Modeling: Nodes move within a defined area, attracted to hotspots (attraction points) based on their proximity. Home points add periodic returns for each node, mimicking real-life behavior.
-Configurable Simulation: Adjustable parameters, such as the number of nodes, area size, attraction points, movement speed, and simulation steps, via a JSON configuration file.
-Trace Generation: Outputs a trace file recording node positions over time.
-Statistical Validation: Hotspot visit distributions and average displacement of nodes are calculated for validation.
-Visualization: Real-time animation of node movements and attraction points using matplotlib.
-**How It Works**
-1. Initialization
-The SWIM class initializes with parameters from a configuration file: 
-Node and Area Properties: 
-num_nodes: Number of nodes in the simulation.
-area_size: Size of the simulation area (square grid).
-Hotspot Properties:
-attraction_points: Number of attraction points in the area.
-beta: Influence of distance on node attraction to hotspots.
-Node Movement:
-speed_min and speed_max: Range of node movement speeds.
-Simulation Duration:
-steps: Total number of simulation steps.
-Behavioral Features:
-Nodes probabilistically return to a "home" hotspot.
-2. Node Movement
-Nodes move toward attraction points based on calculated probabilities:
+### **Average Node Displacement**
+The average displacement of nodes from their home locations is calculated:
 
-Attraction Probabilities:
-Nodes are more likely to move toward closer hotspots. The influence of proximity is governed by the beta parameter.
-Movement Toward Target:
-Nodes travel in the direction of their selected target point. Movement speed varies between speed_min and speed_max.
-3. Trace Generation
-During the simulation, the script records each node's position at every time step in a trace file (trace.txt).
+Average Node Displacement: 24.67
 
-4. Validation
-The script validates the model by:Tracking hotspot visit frequencies. Calculating the average displacement of nodes from their home hotspots.
-5. Visualization
-A real-time animation shows: Node movements as blue points. Attraction points as red points. Dynamic movement patterns over time.
+- Represents the typical distance a node moves away from its home location.
+- Higher values suggest a more dynamic movement pattern.
 
+---
 
-Parameters:
-num_nodes: Number of nodes in the simulation.
-area_size: Size of the simulation area (square grid).
-attraction_points: Number of hotspots.
-beta: Controls how strongly distance affects attraction probabilities.
-speed_min and speed_max: Speed range for node movement.
-steps: Number of simulation steps.
-prob_return_home: Probability of a node returning to its home hotspot.
-trace_file: Output file for trace logs.
-How to Run the Simulation
-Create or edit the config_SWIM.json file with your desired parameters.
+## Visualization
 
-Output
-1. Trace File
-The trace file (trace.txt) logs node positions at each time step
+### **Animated Mobility Simulation**
+A **matplotlib-based animation** is generated to visualize node movements over time.
 
-3. Visualization
-An animated plot shows: Nodes (blue points) moving across the grid. Attraction points (red points) as stationary targets.
+- **Blue dots**: Represent nodes.
+- **Red dots**: Represent attraction points (hotspots).
+- **Movement**: Nodes move toward attraction points dynamically in each frame.
+
+This animation provides a dynamic view of node movements, helping to analyze mobility patterns visually.
+

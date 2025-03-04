@@ -1,242 +1,318 @@
 import json
+import math
 import random
-import pandas as pd
 import networkx as nx
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import heapq
+import sys
 
-
-class Node:
-    def __init__(self, name, current_position, max_speed, pause_probability=0.1, door_opening_time=2):
-        self.name = name
-        self.position = current_position
-        self.max_speed = max_speed
-        self.pause_probability = pause_probability
-        self.door_opening_time = door_opening_time
-        self.is_paused = False
-        self.time_at_node = 0
-
-    def move(self, graph, distance_limit):
-        """Simulates the tactical movement of the node."""
-        if self.is_paused:
-            self.time_at_node += 1
-            if self.time_at_node >= self.door_opening_time:
-                self.is_paused = False
-                self.time_at_node = 0
-            return
-
-        if random.random() < self.pause_probability:
-            self.is_paused = True
-            return
-
-        current_node = self.position
-        neighbors = list(graph.neighbors(current_node))
+# ---------------------------
+# TIMM_Settings: Reads and validates configuration
+# ---------------------------
+class TIMM_Settings:
+    def __init__(self, config):
+        self.model = config.get("model", "TIMM")
+        self.ignore = config.get("ignore", 0.0)
+        self.randomSeed = config.get("randomSeed", None)
+        self.x = config.get("x", None)
+        self.y = config.get("y", None)
+        self.duration = config.get("duration", None)
+        self.nn = config.get("nn", None)
+        self.circular = config.get("circular", False)
+        self.J = config.get("J", None)
         
-        # Apply distance limit (filter neighbors based on distance)
-        if distance_limit is not None:
-            neighbors = [
-                neighbor for neighbor in neighbors
-                if nx.shortest_path_length(graph, source=current_node, target=neighbor) <= distance_limit
-            ]
+        self.building_graph_path = config.get("Building_graph", None)
+        if not self.building_graph_path:
+            raise ValueError("Building_graph must be provided in the config.")
+        
+        self.group_max_distance = config.get("Group_max_distance", None)
+        self.group_endtime = config.get("Group_endtime", None)
+        self.fast_speed = config.get("Fast_speed", None)  # Expected [speed, variance]
+        self.group_size = config.get("Group_size", None)
+        self.graph_max_distance_vertices = config.get("Graph_max_distance_vertices", None)
+        self.group_minimal_size = config.get("Group_minimal_size", None)
+        self.door_wait_or_opening_time = config.get("Door_wait_or_opening_time", None)  # Expected [time, variance]
+        self.slow_speed = config.get("Slow_speed", None)  # Expected [speed, variance]
+        self.group_one_rules = config.get("GroupOneRules", False)
+        self.group_starttimes = config.get("Group_starttimes", None)
 
-        if not neighbors:
-            return
+        # Validate required parameters
+        if self.group_size is None:
+            raise ValueError("Group_size is required in config.")
+        if self.group_starttimes is None:
+            self.group_starttimes = [0.0] * len(self.group_size)
+        if self.group_endtime is None:
+            self.group_endtime = [float('inf')] * len(self.group_size)
+        if self.group_max_distance is None:
+            self.group_max_distance = [float('inf')] * len(self.group_size)
+        if self.slow_speed is None or len(self.slow_speed) < 1:
+            raise ValueError("Slow_speed must be provided in config.")
+        if self.fast_speed is None or len(self.fast_speed) < 1:
+            raise ValueError("Fast_speed must be provided in config.")
+        if self.fast_speed[0] < self.slow_speed[0]:
+            raise ValueError("Fast_speed must be >= Slow_speed")
+        if self.door_wait_or_opening_time is None or len(self.door_wait_or_opening_time) < 1:
+            raise ValueError("Door_wait_or_opening_time must be provided in config.")
+        
+        # Variance values (if not provided, default to zero)
+        self.slow_speed_variance = self.slow_speed[1] if len(self.slow_speed) > 1 else 0.0
+        self.fast_speed_variance = self.fast_speed[1] if len(self.fast_speed) > 1 else 0.0
+        self.door_time = self.door_wait_or_opening_time[0]
+        self.door_time_variance = self.door_wait_or_opening_time[1] if len(self.door_wait_or_opening_time) > 1 else 0.0
 
-        # Move to a randomly chosen neighbor
-        next_node = random.choice(neighbors)
-        self.position = next_node
-        print(f"{self.name} moved to {self.position}")
-
-
-class BuildingGraph:
-    def __init__(self):
+# ---------------------------
+# TIMM_Graph: Loads the building graph
+# ---------------------------
+class TIMM_Graph:
+    def __init__(self, file_path):
         self.graph = nx.Graph()
-
-    def add_vertex(self, node_name, x, y, node_type, neighbors):
-        """Adds a node to the graph."""
-        self.graph.add_node(node_name, pos=(x, y), type=node_type)
-        for neighbor in neighbors:
-            self.graph.add_edge(node_name, neighbor)
-
-    def get_start_vertex(self):
-        """Retrieves the StartVertex node."""
-        for node, data in self.graph.nodes(data=True):
-            if data.get('type') == 'StartVertex':
-                print(f"Found StartVertex: {node}")
+        self.load_graph(file_path)
+    
+    def load_graph(self, file_path):
+        # Assumes a file format like:
+        # node=NodeName,x,y,neighbor1;neighbor2;...
+        with open(file_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split(',')
+                try:
+                    node_name = parts[0].split('=')[1]
+                    x = float(parts[1])
+                    y = float(parts[2])
+                except (IndexError, ValueError):
+                    continue
+                neighbors = []
+                if len(parts) > 3:
+                    neighbors = [n for n in parts[3].split(';') if n]
+                self.graph.add_node(node_name, pos=(x, y))
+                for nbr in neighbors:
+                    self.graph.add_edge(node_name, nbr)
+    
+    def get_vertex_by_identification(self, ident):
+        # Return the first node whose name contains the identifier
+        for node in self.graph.nodes:
+            if ident in node:
                 return node
-        print("Error: No StartVertex found in the graph.")
         return None
 
-    def dynamically_add_distance_nodes(self, distance_limit):
-        """Adds intermediate distance nodes to satisfy the distance limit."""
-        new_nodes = []
-        for edge in list(self.graph.edges):
-            node1, node2 = edge
-            pos1, pos2 = self.graph.nodes[node1]['pos'], self.graph.nodes[node2]['pos']
-            dist = ((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2) ** 0.5
-            if dist > distance_limit:
-                # Add an intermediate DISTANCE node
-                mid_x = (pos1[0] + pos2[0]) / 2
-                mid_y = (pos1[1] + pos2[1]) / 2
-                mid_node_name = f"DIST_{node1}_{node2}"
-                self.graph.add_node(mid_node_name, pos=(mid_x, mid_y), type="DISTANCE")
-                self.graph.add_edge(node1, mid_node_name)
-                self.graph.add_edge(mid_node_name, node2)
-                self.graph.remove_edge(node1, node2)
-                new_nodes.append(mid_node_name)
-        print(f"Added {len(new_nodes)} DISTANCE nodes to satisfy the distance limit.")
+# ---------------------------
+# MobileNode: Represents a mobile node
+# ---------------------------
+class MobileNode:
+    def __init__(self, node_id):
+        self.node_id = node_id
+        self.current_vertex = None
+        self.position = None  # (x, y)
 
+# ---------------------------
+# TIMM_Group: Manages a group of nodes and their movement
+# ---------------------------
+class TIMM_Group:
+    def __init__(self, nodes, group_id, start_vertex, settings, building_graph):
+        self.nodes = nodes                # List of MobileNode objects
+        self.group_id = group_id
+        self.settings = settings
+        self.building_graph = building_graph
+        self.current_vertex = start_vertex
+        self.total_distance = 0.0
+        # Initialize all nodes to start at the start vertex position.
+        pos = self.building_graph.graph.nodes[start_vertex]['pos']
+        for node in self.nodes:
+            node.current_vertex = start_vertex
+            node.position = pos
 
-def parse_building_graph_file(file_path):
-    """Parses the building graph file."""
-    building_graph = BuildingGraph()
+    def move_group(self, current_time):
+        """
+        Move the group from its current vertex to a randomly chosen neighbor.
+        Returns the next event time if a move is scheduled; otherwise None.
+        """
+        group_endtime = self.settings.group_endtime[self.group_id]
+        group_max_distance = self.settings.group_max_distance[self.group_id]
+        
+        if current_time >= group_endtime:
+            return None
+        if self.total_distance >= group_max_distance:
+            return None
+        
+        # Get neighbors from the current vertex.
+        neighbors = list(self.building_graph.graph.neighbors(self.current_vertex))
+        if not neighbors:
+            return None  # No available move.
+        
+        next_vertex = random.choice(neighbors)
+        current_pos = self.building_graph.graph.nodes[self.current_vertex]['pos']
+        next_pos = self.building_graph.graph.nodes[next_vertex]['pos']
+        distance = math.hypot(next_pos[0] - current_pos[0], next_pos[1] - current_pos[1])
+        
+        # Select a speed uniformly between slow_speed and fast_speed.
+        base_slow = self.settings.slow_speed[0]
+        base_fast = self.settings.fast_speed[0]
+        speed = random.uniform(base_slow, base_fast)
+        travel_time = distance / speed if speed > 0 else 0
+        
+        # Simulate door opening/waiting time.
+        door_wait = random.uniform(self.settings.door_time, self.settings.door_time + self.settings.door_time_variance)
+        next_event_time = current_time + travel_time + door_wait
+        
+        self.total_distance += distance
+        self.current_vertex = next_vertex
+        
+        # Update each node’s current vertex and position.
+        for node in self.nodes:
+            node.current_vertex = next_vertex
+            node.position = next_pos
+        
+        return next_event_time
+
+# ---------------------------
+# TIMM_EventManager: Priority queue for simulation events.
+# ---------------------------
+class TIMM_EventManager:
+    def __init__(self):
+        self.events = []  # Heap of (time, group_id) tuples.
     
-    with open(file_path, 'r') as file:
-        for line in file:
-            if line.startswith('#') or not line.strip():
+    def add_event(self, time, group_id):
+        heapq.heappush(self.events, (time, group_id))
+    
+    def get_next_event(self):
+        return heapq.heappop(self.events) if self.events else None
+    
+    def is_empty(self):
+        return len(self.events) == 0
+
+# ---------------------------
+# TIMM_Simulation: Main simulation class replicating Java’s TIMM.
+# ---------------------------
+class TIMM_Simulation:
+    def __init__(self, config_file):
+        # Load config.
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+        self.config = config
+        # Seed random if provided.
+        if "randomSeed" in config:
+            random.seed(config["randomSeed"])
+        
+        # Initialize settings.
+        self.settings = TIMM_Settings(config)
+        self.duration = self.settings.duration
+        
+        # Build the building graph.
+        self.building_graph = TIMM_Graph(self.settings.building_graph_path)
+        self.start_vertex = self.building_graph.get_vertex_by_identification("StartVertex")
+        if self.start_vertex is None:
+            raise ValueError("StartVertex not found in the building graph.")
+        
+        # Create mobile nodes; total count must equal sum of group sizes.
+        total_nodes = sum(self.settings.group_size)
+        self.nodes = [MobileNode(i + 1) for i in range(total_nodes)]
+        
+        # Partition nodes into groups.
+        self.groups = []
+        index = 0
+        for group_id, size in enumerate(self.settings.group_size):
+            group_nodes = self.nodes[index:index + size]
+            index += size
+            group = TIMM_Group(group_nodes, group_id, self.start_vertex, self.settings, self.building_graph)
+            self.groups.append(group)
+        
+        # Initialize event manager and schedule initial events based on group starttimes.
+        self.event_manager = TIMM_EventManager()
+        for group_id, start_time in enumerate(self.settings.group_starttimes):
+            self.event_manager.add_event(start_time, group_id)
+        
+        # Log initial positions for each node at its group’s start time.
+        self.trace_data = []
+        for group_id, group in enumerate(self.groups):
+            pos = self.building_graph.graph.nodes[group.current_vertex]['pos']
+            for node in group.nodes:
+                self.trace_data.append(f"{node.node_id} {self.settings.group_starttimes[group_id]} {pos[0]} {pos[1]}")
+
+    def pre_generation(self):
+        """
+        Pre-generation tasks:
+        - If a 'z' parameter is present, indicate that output is in 3D.
+        - Add the 'ignore' period to the simulation duration.
+        - Reset the random seed.
+        """
+        if "z" in self.config:
+            print("note: Output is now in 3D.")
+        self.duration += self.settings.ignore
+        if "randomSeed" in self.config:
+            random.seed(self.config["randomSeed"])
+    
+    def post_generation(self):
+        """
+        Post-generation tasks:
+        - Warn if the ignore period is too short.
+        - Cut the initial 'ignore' period from the trace data.
+        - Generate and display a new random seed.
+        """
+        ignore = self.settings.ignore
+        if ignore < 600.0:
+            print("warning: setting the initial phase to be cut off to be too short may result in very weird scenarios")
+        if ignore > 0:
+            self.cut_trace(ignore)
+        # Generate a new random seed (ensure it is non-negative)
+        next_seed = random.getrandbits(64)
+        while next_seed < 0:
+            next_seed = random.getrandbits(64)
+        print(f"Next RNG-Seed = {next_seed}")
+
+    def cut_trace(self, ignore):
+        """
+        Removes events that occur before the 'ignore' time and adjusts subsequent times.
+        """
+        new_trace = []
+        for line in self.trace_data:
+            parts = line.split()
+            if len(parts) >= 4:
+                node_id = parts[0]
+                t = float(parts[1])
+                if t >= ignore:
+                    new_t = t - ignore
+                    new_line = f"{node_id} {new_t} {parts[2]} {parts[3]}"
+                    new_trace.append(new_line)
+        self.trace_data = new_trace
+        self.duration -= ignore
+
+    def run(self):
+        # Pre-generation: adjust duration and initialize random seed etc.
+        self.pre_generation()
+        # Run the simulation until there are no more events or duration is exceeded.
+        while not self.event_manager.is_empty():
+            event = self.event_manager.get_next_event()
+            if event is None:
+                break
+            event_time, group_id = event
+            if event_time > self.duration:
                 continue
-
-            parts = line.strip().split(',')
-            node_name = parts[0].split('=')[1]
-            x, y = map(float, parts[1:3])
-            neighbors = parts[3].split(';')
-            node_type = "StartVertex" if node_name == "StartVertex" else parts[4].strip()
-
-            building_graph.add_vertex(node_name, x, y, node_type, neighbors)
-            print(f"Added node {node_name} with type {node_type} and neighbors {neighbors}")
-
-    return building_graph
-
-
-def generate_trace_file(building_graph, nodes, max_steps=100, distance_limit=None, trace_file="mobvis_trace.csv"):
-    """Generates the trace file with tactical movements."""
-    trace_data = []
-    start_vertex = building_graph.get_start_vertex()
-
-    if start_vertex is None:
-        print("No StartVertex found. Exiting trace generation.")
-        return
+            
+            # Move the group and log the new positions.
+            next_event_time = self.groups[group_id].move_group(event_time)
+            new_vertex = self.groups[group_id].current_vertex
+            pos = self.building_graph.graph.nodes[new_vertex]['pos']
+            for node in self.groups[group_id].nodes:
+                self.trace_data.append(f"{node.node_id} {event_time} {pos[0]} {pos[1]}")
+            
+            # Schedule next move if within both simulation duration and the group's endtime.
+            if next_event_time is not None and next_event_time <= self.duration and next_event_time < self.settings.group_endtime[group_id]:
+                self.event_manager.add_event(next_event_time, group_id)
+        # Post-generation: cut initial phase and output new RNG seed.
+        self.post_generation()
     
-    # Set initial positions for nodes
-    for node in nodes:
-        node.position = start_vertex
+    def write_trace(self, filename="mobvis_trace.csv"):
+        with open(filename, "w") as f:
+            for line in self.trace_data:
+                f.write(line + "\n")
 
-    for node in nodes:
-        node_pos = building_graph.graph.nodes[node.position]['pos']
-        trace_data.append({'time': 0, 'node': node.name, 'x': node_pos[0], 'y': node_pos[1]})
-
-    for step in range(1, max_steps + 1):
-        for node in nodes:
-            node.move(building_graph.graph, distance_limit)
-            node_pos = building_graph.graph.nodes[node.position]['pos']
-            trace_data.append({'time': step, 'node': node.name, 'x': node_pos[0], 'y': node_pos[1]})
-
-    df = pd.DataFrame(trace_data)
-    df.to_csv(trace_file, index=False)
-    print(f"Trace file '{trace_file}' generated successfully.")
-
-def visualize_trace_file(trace_file, building_graph):
-    """Visualizes the movement of nodes using the trace file."""
-    # Load trace data from CSV
-    df = pd.read_csv(trace_file)
-
-    # Extract unique nodes
-    nodes = df['node'].unique()
-
-    # Extract graph positions for visualizing node locations
-    pos = nx.get_node_attributes(building_graph.graph, 'pos')
-
-    # Define distinct colors for moving nodes
-    node_colors = {node: f"C{idx}" for idx, node in enumerate(nodes)}  # Use Matplotlib's color cycle
-
-    # Create a Matplotlib figure and axis
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    # Draw the building graph layout (static nodes)
-    static_node_color = "#A0A0A0"  # Gray color for rooms/building nodes
-    nx.draw(
-        building_graph.graph,
-        pos,
-        with_labels=True,
-        node_color=static_node_color,
-        node_size=500,
-        ax=ax,
-    )
-
-    ax.set_title("Node Movement Visualization")
-    ax.set_xlabel("X Position")
-    ax.set_ylabel("Y Position")
-
-    # Initialize scatter plots and paths for each moving node
-    scatter_plots = {
-        node: ax.plot([], [], 'o', color=node_colors[node], label=node, markersize=8)[0]
-        for node in nodes
-    }
-    paths = {
-        node: ax.plot([], [], '-', color=node_colors[node], alpha=0.6)[0]
-        for node in nodes
-    }  # Path line for each node
-
-    ax.legend()
-
-    # Define the update function for animation
-    def update(frame):
-        """Update function for the animation."""
-        frame_data = df[df['time'] == frame]
-        for node in nodes:
-            node_data = frame_data[frame_data['node'] == node]
-            x_data = node_data['x'].values
-            y_data = node_data['y'].values
-
-            # Update the scatter plot
-            if len(x_data) > 0 and len(y_data) > 0:
-                scatter_plots[node].set_data(x_data, y_data)
-
-                # Update the path line
-                path_data = df[(df['node'] == node) & (df['time'] <= frame)]
-                paths[node].set_data(path_data['x'], path_data['y'])
-
-        return list(scatter_plots.values()) + list(paths.values())
-
-    # Set up the animation
-    frames = df['time'].max() + 1  # Total number of frames based on time steps
-    ani = animation.FuncAnimation(fig, update, frames=frames, interval=200, blit=True)
-
-    plt.show()
-
-
+# ---------------------------
+# Main execution
+# ---------------------------
 if __name__ == "__main__":
-    # Load configuration from JSON file
-    with open("config_TIMM.json", "r") as config_file:
-        config = json.load(config_file)
-
-    # Parse building graph
-    building_graph = parse_building_graph_file(config["building_graph"])
-
-    # Dynamically add distance nodes if necessary
-    building_graph.dynamically_add_distance_nodes(config["distance_limit"])
-
-    # Create nodes from config
-    nodes = [
-        Node(
-            name=node_config["name"],
-            current_position=None,
-            max_speed=node_config["max_speed"],
-            pause_probability=node_config["pause_probability"],
-            door_opening_time=node_config["door_opening_time"]
-        )
-        for node_config in config["nodes"]
-    ]
-
-    # Generate trace file
-    generate_trace_file(
-        building_graph,
-        nodes,
-        max_steps=config["simulation"]["max_steps"],
-        distance_limit=config["distance_limit"],
-        trace_file=config["simulation"]["trace_file"]
-    )
-
-    # Visualize the trace file
-    visualize_trace_file(config["simulation"]["trace_file"], building_graph)
-
+    # Hardcoded configuration file path.
+    config_file = "config_TIMM.json"
+    simulation = TIMM_Simulation(config_file)
+    simulation.run()
+    simulation.write_trace()

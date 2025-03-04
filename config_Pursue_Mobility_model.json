@@ -1,29 +1,13 @@
-{
-  "simulation": {
-    "acceleration_factor": 0.1,        
-    "random_magnitude": 5.0,           
-    "max_simulation_time": 100,        
-    "time_step": 1,                    
-    "trace_file": "pursue_trace.csv"   
-  },
-  "target": {
-    "name": "Target",                 
-    "initial_x": 25,                   
-    "initial_y": 25,                   
-    "max_speed": 1.0                  
-  },
-  "pursuers": [
-    {
-      "name": "Pursuer1",               
-      "max_speed": 1.2                  
-    },
-    {
-      "name": "Pursuer2",               
-      "max_speed": 1.3                  
-    },
-    {
-      "name": "Pursuer3",               
-      "max_speed": 1.1                  
-    }
-  ]
-}
+[Settings]
+num_nodes = 10
+grid_x = 200.0
+grid_y = 200.0
+duration = 600.0
+min_speed = 0.5
+max_speed = 1.5
+aggressiveness = 0.5
+pursue_randomness = 0.5
+random_seed = 1739538569793
+ignore = 3600.0
+
+

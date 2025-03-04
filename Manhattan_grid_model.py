@@ -1,119 +1,222 @@
-import json
 import random
-import time
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import math
+import configparser
+import csv
 
+class Position:
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
 
-class UMTSManhattanGrid:
-    def __init__(self, config_file):
-        self.config = self.load_config(config_file)
-        self.u = self.config["u"]
-        self.v = self.config["v"]
-        self.min_speed = self.config["min_speed"]
-        self.max_speed = self.config["max_speed"]
-        self.pause_prob = self.config["pause_prob"]
-        self.max_pause_time = self.config["max_pause_time"]
-        self.num_nodes = self.config["nodes"]
-        self.simulation_time = self.config["simulation_time"]
-        self.time_step = self.config["time_step"]
-        self.grid = self.create_grid()
-        self.nodes = self.initialize_nodes()
-        self.trace = []
+    def __eq__(self, other):
+        return math.isclose(self.x, other.x, rel_tol=1e-9) and math.isclose(self.y, other.y, rel_tol=1e-9)
 
-    def load_config(self, config_file):
-        with open(config_file, "r") as file:
-            return json.load(file)
+    def distance(self, other: 'Position'):
+        return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
 
-    def create_grid(self):
-        """Generate a grid with vertical and horizontal blocks."""
-        grid = []
-        for i in range(self.u + 1):
-            for j in range(self.v + 1):
-                grid.append((i, j))
-        return grid
+    def __repr__(self):
+        return f"Position({self.x}, {self.y})"
 
-    def initialize_nodes(self):
-        """Initialize all nodes at position (0, 0)."""
-        return [{"id": i, "position": (0, 0), "speed": self.min_speed} for i in range(self.num_nodes)]
+class MobileNode:
+    def __init__(self):
+        self.waypoints = []
 
-    def move_node(self, node):
-        """Move a node along the Manhattan grid based on its speed."""
-        current_position = node["position"]
-        direction = random.choice(["up", "down", "left", "right"])
-        new_position = current_position
+    def add(self, time: float, pos: Position):
+        self.waypoints.append((time, pos))
+        return True  # Mimic Java's add() returning a boolean
 
-        if direction == "up" and current_position[1] < self.v:
-            new_position = (current_position[0], current_position[1] + 1)
-        elif direction == "down" and current_position[1] > 0:
-            new_position = (current_position[0], current_position[1] - 1)
-        elif direction == "left" and current_position[0] > 0:
-            new_position = (current_position[0] - 1, current_position[1])
-        elif direction == "right" and current_position[0] < self.u:
-            new_position = (current_position[0] + 1, current_position[1])
+class ManhattanGrid:
+    def __init__(self, config: dict):
+        self.xblocks = config.getint('General', 'xblocks')
+        self.yblocks = config.getint('General', 'yblocks')
+        self.updateDist = config.getfloat('General', 'updateDist')
+        self.turnProb = config.getfloat('General', 'turnProb')
+        self.speedChangeProb = config.getfloat('General', 'speedChangeProb')
+        self.minSpeed = config.getfloat('General', 'minSpeed')
+        self.meanSpeed = config.getfloat('General', 'meanSpeed')
+        self.speedStdDev = config.getfloat('General', 'speedStdDev')
+        self.pauseProb = config.getfloat('General', 'pauseProb')
+        self.maxPause = config.getfloat('General', 'maxPause')
+        
+        self.parameter_data = {
+            'x': config.getfloat('General', 'x'),
+            'y': config.getfloat('General', 'y'),
+            'duration': config.getfloat('General', 'duration'),
+            'randomSeed': config.getint('General', 'randomSeed'),
+            'numNodes': config.getint('General', 'numNodes', fallback=10),
+            'ignore': config.getfloat('General', 'ignore')
+        }
+        # Compute block dimensions:
+        self.xdim = self.parameter_data['x'] / float(self.xblocks)
+        self.ydim = self.parameter_data['y'] / float(self.yblocks)
+        self.random = random.Random(self.parameter_data['randomSeed'])
+        # In Java, pauseProb is increased by speedChangeProb.
+        self.pauseProb += self.speedChangeProb
 
-        # Set speed and update node position
-        node["speed"] = random.uniform(self.min_speed, self.max_speed)
-        if random.random() < self.pause_prob:  # Pause with a certain probability
-            pause_duration = random.uniform(0, self.max_pause_time)
-            time.sleep(pause_duration)
-        node["position"] = new_position
-        return new_position
+    def random_next_double(self):
+        return self.random.random()
 
-    def simulate(self):
-        """Run the Manhattan Grid simulation."""
-        positions_over_time = []
+    def random_next_gaussian(self):
+        return self.random.gauss(0, 1)
 
-        for t in range(int(self.simulation_time / self.time_step)):
-            current_positions = []
-            for node in self.nodes:
-                new_position = self.move_node(node)
-                current_positions.append(new_position)
-                self.trace.append((t * self.time_step, node["id"], new_position[0], new_position[1]))
-            positions_over_time.append(current_positions)
-        return positions_over_time
+    def out_of_bounds(self, pos: Position):
+        # Return True if pos is outside the simulation area.
+        return (pos.x < 0.0) or (pos.y < 0.0) or (pos.x > self.parameter_data['x']) or (pos.y > self.parameter_data['y'])
 
-    def generate_trace_file(self, file_name):
-        """Generate a trace file."""
-        with open(file_name, "w") as f:
-            f.write("# Time NodeID X Y\n")
-            for entry in self.trace:
-                f.write(f"{entry[0]:.2f} {entry[1]} {entry[2]} {entry[3]}\n")
+    def align_pos(self, pos: Position):
+        # Round pos to the nearest grid crossing
+        aligned_x = round(pos.x / self.xdim) * self.xdim
+        aligned_y = round(pos.y / self.ydim) * self.ydim
+        # Clamp the aligned position to be within bounds.
+        aligned_x = max(0.0, min(aligned_x, self.parameter_data['x']))
+        aligned_y = max(0.0, min(aligned_y, self.parameter_data['y']))
+        return Position(aligned_x, aligned_y)
 
+    def get_new_pos(self, src: Position, dist: float, dir: int):
+        # Replicate Java's getNewPos:
+        if dir == 0:  # up
+            return Position(src.x, src.y + dist)
+        elif dir == 1:  # down
+            return Position(src.x, src.y - dist)
+        elif dir == 2:  # right
+            return Position(src.x + dist, src.y)
+        elif dir == 3:  # left
+            return Position(src.x - dist, src.y)
+        else:
+            return src
 
-def animate_simulation(grid_model, positions_over_time):
-    """Visualize the simulation using matplotlib."""
-    fig, ax = plt.subplots()
-    ax.set_xlim(-1, grid_model.u + 1)
-    ax.set_ylim(-1, grid_model.v + 1)
-    ax.set_xticks(range(grid_model.u + 1))
-    ax.set_yticks(range(grid_model.v + 1))
-    ax.grid(True)
+    def must_turn(self, pos: Position, dir: int):
+        # Return True if the node is exactly at the boundary for the given direction.
+        if dir == 0 and math.isclose(pos.y, self.parameter_data['y'], rel_tol=1e-6):
+            return True
+        if dir == 1 and math.isclose(pos.y, 0.0, rel_tol=1e-6):
+            return True
+        if dir == 2 and math.isclose(pos.x, self.parameter_data['x'], rel_tol=1e-6):
+            return True
+        if dir == 3 and math.isclose(pos.x, 0.0, rel_tol=1e-6):
+            return True
+        return False
 
-    scatter = ax.scatter([], [])
+    def generate(self):
+        nodes = []
+        num_nodes = self.parameter_data['numNodes']
+        # Compute initial horizontal span and init_xr (bias for x-axis movement)
+        init_xh = self.parameter_data['x'] * (self.xblocks + 1)
+        init_xr = init_xh / (init_xh + self.parameter_data['y'] * (self.yblocks + 1))
+        for i in range(num_nodes):
+            node = MobileNode()
+            t = 0.0
+            st = 0.0
+            src = None
+            dir = 0  # 0=up, 1=down, 2=right, 3=left
+            griddist = 0.0
+            # Normal initialization (no transition logic)
+            if self.random_next_double() < init_xr:
+                # Initialize moving along x-axis.
+                src = Position(
+                    self.random_next_double() * self.parameter_data['x'],
+                    float(int(self.random_next_double() * (self.yblocks + 1))) * self.ydim
+                )
+                dir = int(self.random_next_double() * 2) + 2  # 2 or 3
+                griddist = src.x - (float(int(src.x / self.xdim)) * self.xdim)
+                if dir == 2:
+                    griddist = self.xdim - griddist
+            else:
+                # Initialize moving along y-axis.
+                src = Position(
+                    float(int(self.random_next_double() * (self.xblocks + 1))) * self.xdim,
+                    self.random_next_double() * self.parameter_data['y']
+                )
+                dir = int(self.random_next_double() * 2)  # 0 or 1
+                griddist = src.y - (float(int(src.y / self.ydim)) * self.ydim)
+                if dir == 0:
+                    griddist = self.ydim - griddist
+            node.add(0.0, src)
+            nodes.append(node)
+            pos = src
+            speed = self.meanSpeed
+            dist = self.updateDist
 
-    def update(frame):
-        x_data = [pos[0] for pos in positions_over_time[frame]]
-        y_data = [pos[1] for pos in positions_over_time[frame]]
-        scatter.set_offsets(list(zip(x_data, y_data)))
-        return scatter,
+            while t < self.parameter_data['duration']:
+                dst = self.get_new_pos(pos, dist, dir)
+                exact_hit = False
+                # Check turning conditions:
+                if self.out_of_bounds(dst) or (exact_hit := self.must_turn(dst, dir)) or ((griddist <= dist) and (self.random_next_double() < self.turnProb)):
+                    if exact_hit:
+                        mdist = dist
+                        dist = self.updateDist
+                    else:
+                        mdist = griddist
+                        dist -= mdist
+                        if math.isclose(dist, 0.0, rel_tol=1e-9):
+                            dist = self.updateDist
+                    t += mdist / speed
+                    dst = self.align_pos(self.get_new_pos(pos, mdist, dir))
+                    if not src == dst:
+                        if self.out_of_bounds(dst):
+                            raise ValueError("Out of bounds (2)")
+                        node.add(t, dst)
+                        src = dst
+                    pos = dst
+                    st = t
+                    # Update direction based on new position:
+                    if dir < 2:
+                        if (pos.x > 0.0) and (pos.x < self.parameter_data['x']):
+                            dir = int(self.random_next_double() * 2) + 2
+                        else:
+                            dir = 3
+                    else:
+                        if (pos.y > 0.0) and (pos.y < self.parameter_data['y']):
+                            dir = int(self.random_next_double() * 2)
+                        else:
+                            dir = 1
+                    griddist = self.ydim if dir < 2 else self.xdim
+                else:
+                    t += dist / speed
+                    pos = dst
+                    griddist -= dist
+                    dist = self.updateDist
+                    if griddist < 0.0:
+                        griddist += self.ydim if dir < 2 else self.xdim
+                    rnd = self.random_next_double()
+                    if rnd < self.pauseProb:
+                        if not src == dst:
+                            if self.out_of_bounds(dst):
+                                raise ValueError("Out of bounds (3)")
+                            node.add(t, dst)
+                            src = dst
+                        if rnd < self.speedChangeProb:
+                            st = t
+                        else:
+                            t += self.random_next_double() * self.maxPause
+                            st = t
+                            if self.out_of_bounds(dst):
+                                raise ValueError("Out of bounds (5)")
+                            node.add(t, dst)
+                        speed = (self.random_next_gaussian() * self.speedStdDev) + self.meanSpeed
+                        if speed < self.minSpeed:
+                            speed = self.minSpeed
+            if st < self.parameter_data['duration']:
+                final_dist = src.distance(pos) * (self.parameter_data['duration'] - st) / (t - st)
+                dst = self.get_new_pos(src, final_dist, dir)
+                if self.out_of_bounds(dst):
+                    raise ValueError("Out of bounds (4)")
+                node.add(self.parameter_data['duration'], dst)
+        return nodes
 
-    ani = animation.FuncAnimation(
-        fig, update, frames=len(positions_over_time), interval=grid_model.time_step * 1000, blit=True
-    )
-    plt.show()
+def read_config(file_path: str):
+    config = configparser.ConfigParser()
+    config.read(file_path)
+    return config
 
+# Run the simulation.
+config = read_config('config_manhattan.ini')
+grid = ManhattanGrid(config)
+nodes = grid.generate()
 
-# Main Function
-if __name__ == "__main__":
-    config_file = "config_Manhattan.json"
-    manhattan_model = UMTSManhattanGrid(config_file)
-
-    # Simulate node movements
-    positions_over_time = manhattan_model.simulate()
-
-    # Generate trace file
-    manhattan_model.generate_trace_file("trace_file.txt")
-
-    # Animate simulation
-    animate_simulation(manhattan_model, positions_over_time)
+# Write results to a CSV file with space-separated columns: node_id, time, x, y.
+with open('nodes_trace.csv', 'w', newline='') as file:
+    writer = csv.writer(file, delimiter=' ')
+    for node_id, node in enumerate(nodes):
+        for time, pos in node.waypoints:
+            writer.writerow([node_id, time, pos.x, pos.y])

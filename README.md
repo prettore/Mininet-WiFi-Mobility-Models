@@ -185,6 +185,7 @@ Generates a **trace file** containing movement history:
 3️⃣ **Dynamically Adjust Graph (if needed)**  
 4️⃣ **Initialize Nodes & Assign Start Position**  
 5️⃣ **Simulate Movement for `max_steps`**  
+
 ---
 
 

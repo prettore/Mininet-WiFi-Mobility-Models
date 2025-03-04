@@ -10,12 +10,6 @@ This project simulates a **pursuit scenario** where multiple **pursuers** chase 
   - **Aggressive movement** toward the target.
   - **Group-based coordination** to stay close to other pursuers.
   - **Random variations** to avoid predictable movement.
-
-The simulation is visualized with **Matplotlib animations**, where:
-- The **target** is represented as a red circle (`ro`).
-- The **pursuers** are represented as blue circles (`bo`).
-- Movement traces are drawn as fading lines.
-
 ---
 
 ## 🚀 Key Features
@@ -66,17 +60,6 @@ Example:
 ]
 ```
 
-## 📤 Expected Output
-
-- **Real-time animation** showing the target and pursuers moving in a 2D space.
-- A **CSV file (`pursue_trace.csv`)** logging movement traces.
-- The animation visualization includes:
-  - **A red dot (`ro`) representing the target**, with a fading red trace.
-  - **Blue dots (`bo`) representing the pursuers**, with blue traces.
-  - Continuous updates showing how pursuers dynamically adjust their movement.
-
----
-
 ## 🛠 How It Works
 
 ### 1️⃣ Target Movement
@@ -89,11 +72,6 @@ Example:
   - Moves towards the **target** based on an **acceleration factor**.
   - Adjusts movement based on **group dynamics** (staying close to other pursuers).
   - Has a **randomized component** to prevent deterministic clustering.
-
-### 3️⃣ Animation & Trace Updates
-- **Each frame updates positions** of all entities.
-- **Traces** (past movements) are stored and visualized.
-- **Matplotlib animation** is used for real-time rendering.
 
 ---
 
@@ -127,17 +105,6 @@ python Pursue_mobility_model.py
 ### 🔹 update() Function  
 > **Updates target and pursuer positions per frame.**  
 > **Plots movement traces.**  
-## 📈 Visualization Example  
-
-> 🔹 **The actual visualization will have:**  
-> - A **moving red dot** 🟥 representing the **target**.  
-> - **Blue dots** 🔵 representing the **pursuers**, chasing the target.  
-> - **Fading traces** to show movement history.  
-
-
-
-
-
 
 # TIMM: Tactical Indoor Mobility Model
 
@@ -194,12 +161,6 @@ Generates a **trace file** containing movement history:
 - Movement is recorded for `max_steps`.
 - Outputs a **CSV trace file** with (`time`, `node`, `x`, `y`).
 
-### 📌 `visualize_trace_file(...)`
-Creates an **animated visualization** of node movements:
-- Uses **Matplotlib** for graphical representation.
-- Colors **different nodes uniquely**.
-- Animates movement over time.
-
 ---
 
 ## 🔢 Input Parameters (from `config_TIMM.json`)
@@ -216,19 +177,7 @@ Creates an **animated visualization** of node movements:
 
 ---
 
-## 📤 Output
-- **Trace File (`trace.csv`)**  
-  - Records movements over time in CSV format:
-    ```csv
-    time,node,x,y
-    0,Node1,10,5
-    1,Node1,11,6
-    2,Node1,12,6
-    ```
-- **Animated Visualization**
-  - Displays **movement paths** dynamically using Matplotlib.
 
----
 
 ## 🔄 Execution Flow
 1️⃣ **Parse Configuration (`config_TIMM.json`)**  
@@ -236,9 +185,6 @@ Creates an **animated visualization** of node movements:
 3️⃣ **Dynamically Adjust Graph (if needed)**  
 4️⃣ **Initialize Nodes & Assign Start Position**  
 5️⃣ **Simulate Movement for `max_steps`**  
-6️⃣ **Generate Trace File (`trace.csv`)**  
-7️⃣ **Visualize the Movement**   
-
 ---
 
 
@@ -263,8 +209,6 @@ This class defines the Manhattan Grid environment and handles:
 2. **Node Initialization** → Places nodes at `(0, 0)` initially.
 3. **Movement Simulation** → Moves nodes in **random** directions.
 4. **Trace File Generation** → Logs movements into a `.txt` file.
-5. **Visualization** → Animates node movement in a **2D grid**.
-
 ---
 
 ## 🛠️ Important Features in the Code
@@ -295,12 +239,6 @@ This class defines the Manhattan Grid environment and handles:
     1.00 0 1 0
     2.00 0 1 1
     ```
-
-### 📌 `animate_simulation_with_paths()`
-- **Visualizes the movement** using `matplotlib.animation`.
-- Displays **node movement paths** in **red**.
-- Plots **scatter points** to show live positions.
-
 ---
 
 ## 🔢 Input Parameters (from `config_Manhattan.json`)
@@ -331,15 +269,6 @@ Stores the movement history of each node:
 3.00 0 2 1
 ...
 ```
-
-## 🎥 Visualization
-
-The simulation provides a **graphical representation** of node movements:
-
-- 🟦 **Scatter plot** → Shows the **current positions** of nodes.
-- 🔴 **Red path lines** → Represent the **movement history** of nodes.
-- 📏 **Grid background** → Represents the **Manhattan street layout**.
-
 ---
 
 ## 🔄 Execution Flow
@@ -359,86 +288,6 @@ The simulation provides a **graphical representation** of node movements:
 5️⃣ **Generate Movement Trace**  
    - Save movement history to `trace_file.txt` using `generate_trace_file()`.
 
-6️⃣ **Animate Movement**  
-   - Display an **animated visualization** using `animate_simulation_with_paths()`.
-
-
-
-
-
-
-# RPGM Model Explanation
-
-The **RPGMModel** is a simulation model representing nodes grouped into dynamic social or spatial groups. Each group has a leader and several member nodes. The model simulates the movement of these nodes over time, with the option for group members to dynamically switch groups. Additionally, each node's movement is influenced by the leader's position and specific behaviors like pausing or deviating from the leader’s movement.
-
-## Key Code Features
-
-### 1. **Configuration Loading**
-   - The model loads parameters from a JSON configuration file (`rpgm_config.json`). The configuration file allows easy customization of parameters for the simulation.
-
-### 2. **Initialization of Groups and Nodes**
-   - The model initializes multiple groups. Each group has:
-     - A **leader**, which moves within the grid.
-     - **Members**, whose positions deviate from the leader.
-   - Leaders are positioned randomly within the grid at the start.
-
-### 3. **Leader Movement**
-   - The leader moves within the grid by a specified speed, but with a probability (`pause_prob`), it pauses for a given time step.
-   - Movement is bounded by the grid size to avoid going out of bounds.
-
-### 4. **Member Movement**
-   - Members move around their leader with a deviation in position. This allows them to stay close to their leader but with slight random movement.
-
-### 5. **Group Switching**
-   - Members have a probability (`group_switch_prob`) of switching groups, which adds a dynamic element to the simulation.
-
-### 6. **Trace File Generation**
-   - The simulation records the positions of all nodes (leaders and members) over time and generates a trace file (`rpgm_trace.txt`), which logs the time, node ID, and position (X, Y) of each node.
-
-### 7. **Visualization**
-   - The model visualizes the node movement using `matplotlib`. It creates an animated plot showing how nodes move within the grid.
-
-### 8. **Simulation Logic**
-   - The `simulate()` method runs the model's logic over the specified simulation time (`simulation_time`), updating the position of nodes and recording them.
-
----
-
-## Input Parameters
-
-The simulation is governed by the following parameters, which are specified in the JSON configuration file (`rpgm_config.json`):
-
-```json
-{
-  "num_groups": 3,
-  "num_nodes": 5,
-  "simulation_time": 50,
-  "time_step": 1,
-  "pause_prob": 0.3,
-  "group_switch_prob": 0.2,
-  "grid_size": 100,
-  "leader_speed": 2.0,
-  "member_deviation": 3.0
-}
-```
-This configuration would result in an animated simulation of nodes (leaders and members) moving around a grid, potentially pausing or switching groups as per the specified probabilities. The trace file will log every node's position over the simulation's 50 time units.
-
-## Output
-
-### 1. **Trace File**
-   - The model generates a trace file named `rpgm_trace.txt`, which logs the movement of each node (leaders and members) over time. The trace file is formatted as follows:
-     ```
-     # Time NodeID X Y
-     0.00 1 34.56 78.90
-     1.00 1 36.23 80.45
-     1.00 2 35.67 77.12
-     ```
-
-### 2. **Visualization**
-   - An animated plot shows the movement of the nodes within the grid. The simulation is animated using `matplotlib.animation.FuncAnimation`, displaying the position of each node over time.
-   - The leader's position is typically a primary influence on its members, but they are also influenced by their own movement behavior.
-   
----
-
 
 # SWIM Mobility Model Explanation
 
@@ -452,7 +301,6 @@ The **Small Worlds In Motion (SWIM) Mobility Model** simulates the movement of n
 - **Home location behavior**: Each node has a home point to which it occasionally returns.
 - **Statistical validation**: The model tracks visit frequencies and calculates average displacement.
 - **Trace generation**: A `trace.txt` file logs each node's movement over time.
-- **Visualization**: A matplotlib-based animation displays node movements.
 
 ---
 
@@ -476,9 +324,6 @@ The **Small Worlds In Motion (SWIM) Mobility Model** simulates the movement of n
    - Computes and prints:
      - Hotspot visit distributions.
      - Average displacement of nodes from their home locations.
-
-### 5. **Animation (`animate_trajectory`)**
-   - Uses `matplotlib.animation` to visualize node movements over time.
 
 ---
 
@@ -541,14 +386,7 @@ Average Node Displacement: 24.67
 
 ---
 
-## Visualization
 
-### **Animated Mobility Simulation**
-A **matplotlib-based animation** is generated to visualize node movements over time.
 
-- **Blue dots**: Represent nodes.
-- **Red dots**: Represent attraction points (hotspots).
-- **Movement**: Nodes move toward attraction points dynamically in each frame.
 
-This animation provides a dynamic view of node movements, helping to analyze mobility patterns visually.
 

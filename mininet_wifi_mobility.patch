@@ -1,5 +1,5 @@
 diff --git a/mn_wifi/mobility.py b/mn_wifi/mobility.py
-index cd9ddef0..cd13c9bb 100644
+index cd9ddef0..11f9ee4a 100644
 --- a/mn_wifi/mobility.py
 +++ b/mn_wifi/mobility.py
 @@ -1,8 +1,19 @@
@@ -188,13 +188,13 @@ index cd9ddef0..cd13c9bb 100644
 +                    # If time() has been exceeded since the while loop check, don't sleep
 +                    sleep(max((next_tick_time - monotonic_ns()) / 1e9, 0))
 +            next_tick_time = next_tick_time + self.tick_time
-+
  
++
 +class Tracked(Mobility):
      def __init__(self, **kwargs):
          self.start_thread(**kwargs)
  
-@@ -810,6 +945,796 @@ def __iter__(self):
+@@ -810,6 +945,788 @@ def __iter__(self):
              yield np.dstack((x, y))[0]
  
  
@@ -259,14 +259,7 @@ index cd9ddef0..cd13c9bb 100644
 +        self.positions = new_positions
 +
 +class Pursue:
-+    """
-+    Infinite Pursue Mobility Model that mimics the variable time-stepping
-+    and position updates of the Java Pursue model.
 +
-+    Each node (and the group leader) builds its trajectory as a sequence of
-+    (time, Position) waypoints. When the simulation time advances beyond the
-+    last computed waypoint, the trajectory is extended on the fly.
-+    """
 +    def __init__(self, mob_nodes, x=200.0, y=200.0, minspeed=0.5, maxspeed=1.5,
 +                 aggressiveness=0.5, pursueRandomnessMagnitude=0.5, random_seed=1739098452062):
 +
@@ -340,7 +333,6 @@ index cd9ddef0..cd13c9bb 100644
 +    def __iter__(self):
 +        """
 +        Infinite iterator that yields current positions for all nodes at fixed output intervals.
-+        The trajectories for the group leader and each node are extended on the fly as needed.
 +        """
 +        output_timestep = 0.1
 +        while True:
@@ -991,7 +983,7 @@ index cd9ddef0..cd13c9bb 100644
  class StochasticWalk(object):
      def __init__(self, nodes, FL_DISTR, VEL_DISTR, WT_DISTR=None,
                   border_policy='reflect', model=None):
-@@ -1181,6 +2106,17 @@ def random_direction(*args, **kwargs):
+@@ -1181,6 +2098,17 @@ def random_direction(*args, **kwargs):
  def truncated_levy_walk(*args, **kwargs):
      return iter(TruncatedLevyWalk(*args, **kwargs))
  
@@ -1009,7 +1001,7 @@ index cd9ddef0..cd13c9bb 100644
  
  def heterogeneous_truncated_levy_walk(*args, **kwargs):
      return iter(HeterogeneousTruncatedLevyWalk(*args, **kwargs))
-@@ -1200,7 +2136,7 @@ def gauss_markov(nodes, velocity_mean=1., alpha=0.99, variance=1.):
+@@ -1200,7 +2128,7 @@ def gauss_markov(nodes, velocity_mean=1., alpha=0.99, variance=1.):
          The mean velocity
        *alpha*:
          The tuning parameter used to vary the randomness

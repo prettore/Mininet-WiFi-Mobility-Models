@@ -1,0 +1,1082 @@
+diff --git a/mn_wifi/mobility.py b/mn_wifi/mobility.py
+index cd9ddef0..cd13c9bb 100644
+--- a/mn_wifi/mobility.py
++++ b/mn_wifi/mobility.py
+@@ -1,8 +1,19 @@
++
++# -*- coding: utf-8 -*-
++
++
+ """
+    Mininet-WiFi: A simple networking testbed for Wireless OpenFlow/SDWN!
+    author: Ramon Fontes (ramonrf@dca.fee.unicamp.br)
+ """
+ 
++import heapq
++import networkx as nx
++import random
++import math
++import matplotlib.pyplot as plt
++import csv
++import configparser
+ from threading import Thread as thread
+ from time import sleep, time
+ from os import system as sh, getpid
+@@ -257,8 +268,10 @@ def start_thread(self, **kwargs):
+         self.set_wifi_params()
+ 
+     def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
+-               draw=False, seed=1, mob_model='RandomWalk',
+-               min_wt=1, max_wt=5, max_x=100, max_y=100, **kwargs):
++                draw=False, seed=1, mob_model='Pursue', min_wt=1, max_wt=5,
++           max_x=100, max_y=100, **kwargs):
++    
++            # Extract positional and speed parameters using kwargs.get():
+         "Used when a mobility model is set"
+         np.random.seed(seed)
+         self.ac = kwargs.get('ac_method', None)
+@@ -279,8 +292,16 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
+         # list/tuple/set args are allowed to be empty. Please raise an issue or add special handling
+         # if necessary.
+         model_args = dict()
+-        model_arg_names = ['velocity_mean', 'alpha', 'variance', 'aggregation', 'g_velocity', 'ac_method', \
+-                                'pointlist', 'n_groups', 'aggregation_epoch', 'epoch', 'velocity']
++        model_arg_names = ['minspeed', 'maxspeed', 'aggressiveness', 'pursueRandomnessMagnitude', 'x', 'y', 
++                        'random_seed', 'velocity_mean', 'alpha', 'variance', 'aggregation', 'g_velocity', 'ac_method', \
++                        'pointlist', 'n_groups', 'aggregation_epoch', 'epoch', 'velocity', 'xblocks', 'yblocks', 'updateDist', 'turnProb', 'speedChangeProb', 'minSpeed',
++                        'meanSpeed', 'speedStdDev', 'pauseProb', 'maxPause','building_graph', 'Group_size', 'Group_starttimes', 'Group_endtime', 'Group_max_distance',
++                        'Graph_max_distance_vertices', 'Group_minimal_size', 'Door_wait_or_opening_time', 'Slow_speed', 'Fast_speed', 'nodeRadius', 
++                        'cellDistanceWeight', 'nodeSpeedMultiplier', 'waitingTimeExponent', 'waitingTimeUpperBound' ]
++        for key in model_arg_names:
++            if key in kwargs:
++                setattr(self, key, kwargs[key])
++
+         for argument in kwargs:
+             if argument in model_arg_names:
+                 if isinstance(kwargs[argument], float):
+@@ -291,6 +312,7 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
+                     if kwargs[argument]:
+                         model_args[argument] = kwargs[argument]
+ 
++
+         if draw:
+             nodes = mob_nodes + stat_nodes
+             PlotGraph(nodes=nodes, max_x=max_x, max_y=max_y, **kwargs)
+@@ -312,6 +334,83 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
+             mob = truncated_levy_walk(mob_nodes)
+         elif mob_model == 'RandomDirection':  # Random Direction model
+             mob = random_direction(mob_nodes, dimensions=(max_x, max_y))
++        elif mob_model == 'Pursue':
++            model_args.setdefault('x', max_x)
++            model_args.setdefault('y', max_y)
++            model_args.setdefault('minspeed', 0.5)
++            model_args.setdefault('maxspeed', 1.5)
++            model_args.setdefault('aggressiveness', 0.5)
++            model_args.setdefault('pursueRandomnessMagnitude', 0.5)
++            model_args.setdefault('random_seed', seed)
++
++            allowed_keys = ['x', 'y', 'minspeed', 'maxspeed', 'aggressiveness', 'pursueRandomnessMagnitude', 'random_seed']
++            # Filter model_args so that only allowed keys remain
++            filtered_args = { key: model_args.get(key) for key in allowed_keys }
++            mob = pursue(mob_nodes, **filtered_args)
++
++        elif mob_model == 'ManhattanGridMobility':
++            # Set defaults into model_args if not already provided
++            model_args.setdefault('x', max_x)
++            model_args.setdefault('y', max_y)
++            model_args.setdefault('xblocks', 10)
++            model_args.setdefault('yblocks', 10)
++            model_args.setdefault('updateDist', 5.0)
++            model_args.setdefault('turnProb', 0.5)
++            model_args.setdefault('speedChangeProb', 0.2)
++            model_args.setdefault('minSpeed', 0.5)        # Note: this key is distinct from 'minspeed'
++            model_args.setdefault('meanSpeed', 3.0)
++            model_args.setdefault('speedStdDev', 0.2)
++            model_args.setdefault('pauseProb', 0.0)
++            model_args.setdefault('maxPause', 120.0)
++            model_args.setdefault('randomSeed', seed)
++            allowed_keys = [
++                'x', 'y', 'xblocks', 'yblocks', 'updateDist', 'turnProb',
++                'speedChangeProb', 'minSpeed', 'meanSpeed', 'speedStdDev',
++                'pauseProb', 'maxPause', 'randomSeed'
++            ]
++            filtered_args = { key: model_args.get(key) for key in allowed_keys }
++            mob = manhattanGridMobility(mob_nodes, **filtered_args)
++
++        elif mob_model == 'TIMMMobility':
++            model_args.setdefault('x', max_x)
++            model_args.setdefault('y', max_y)
++            model_args.setdefault('building_graph', 'building_graph.txt')
++            model_args.setdefault('Group_size', [4, 4, 4, 4])
++            model_args.setdefault('Group_starttimes', [10.0, 20.0, 30.0, 40.0])
++            model_args.setdefault('Group_endtime', [1.7976931348623157e+308] * 4)
++            model_args.setdefault('Group_max_distance', [1.7976931348623157e+308] * 4)
++            model_args.setdefault('Graph_max_distance_vertices', 1000.0)
++            model_args.setdefault('Group_minimal_size', 2)
++            model_args.setdefault('Door_wait_or_opening_time', [16.1, 66.8])
++            model_args.setdefault('Slow_speed', [0.577, 0.1060])
++            model_args.setdefault('Fast_speed', [1.037, 0.212])
++            model_args.setdefault('randomSeed', seed)
++            allowed_keys = [
++                'x', 'y', 'building_graph', 'Group_size', 'Group_starttimes', 'Group_endtime',
++                'Group_max_distance', 'Graph_max_distance_vertices', 'Group_minimal_size',
++                'Door_wait_or_opening_time', 'Slow_speed', 'Fast_speed', 'randomSeed'
++            ]
++            filtered_args = { key: model_args.get(key) for key in allowed_keys }        
++            mob = tIMMMobility(mob_nodes, **filtered_args)
++
++        elif mob_model == 'SWIMMobility':
++            model_args.setdefault('x', max_x)
++            model_args.setdefault('y', max_y)
++            model_args.setdefault('nodeRadius', 0.1)
++            model_args.setdefault('cellDistanceWeight', 0.5)
++            model_args.setdefault('nodeSpeedMultiplier', 0.1)
++            model_args.setdefault('waitingTimeExponent', 2.0)
++            model_args.setdefault('waitingTimeUpperBound', 50.0)
++            model_args.setdefault('randomSeed', seed)
++            allowed_keys = [
++                'x', 'y', 'nodeRadius', 'cellDistanceWeight', 'nodeSpeedMultiplier',
++                'waitingTimeExponent', 'waitingTimeUpperBound', 'randomSeed'
++            ]
++            filtered_args = { key: model_args.get(key) for key in allowed_keys }
++            mob = swimMobility(mob_nodes, **filtered_args)
++
++
++ 
+         elif mob_model == 'RandomWayPoint':  # Random Waypoint model
+             for node in mob_nodes:
+                 array_ = ['constantVelocity', 'constantDistance',
+@@ -376,9 +475,45 @@ def start_mob_mod(self, mob, nodes, draw):
+                 pass
+ 
+ 
+-class Tracked(Mobility):
+-    "Used when the position of each node is previously defined"
++class TimedModel(model):
++    def __init__(self, **kwargs):
++        # In order to use nanosecond resolution with the monotonic clock, 
++        # we need to convert to nanoseconds
++        self.tick_time = kwargs.get('timed_model_mob_tick', 1) * 1e9
++        super().__init__(**kwargs)
++
++    def start_mob_mod(self, mob, nodes, draw):
++        """
++        :param mob: mobility params
++        :param nodes: list of nodes
++        """
++        next_tick_time = monotonic_ns() + self.tick_time
++        for xy in mob:
++            for idx, node in enumerate(nodes):
++                pos = round(xy[idx][0], 2), round(xy[idx][1], 2), 0.0
++                self.set_pos(node, pos)
++                if draw:
++                    node.update_2d()
++            if draw:
++                PlotGraph.pause()
++            if self.pause_simulation:
++                while self.pause_simulation:
++                    pass
++                # When resuming simulation, reset the tick timing
++                next_tick_time = monotonic_ns() + self.tick_time
++                continue
++            # We try to use "best effort" scheduling- we want to have
++            # done as many ticks as there are elapsed seconds since we last
++            # performed a mobility tick and try to iterate the loop as consistently
++            # as possible
++            else:
++                while monotonic_ns() < next_tick_time:
++                    # If time() has been exceeded since the while loop check, don't sleep
++                    sleep(max((next_tick_time - monotonic_ns()) / 1e9, 0))
++            next_tick_time = next_tick_time + self.tick_time
++
+ 
++class Tracked(Mobility):
+     def __init__(self, **kwargs):
+         self.start_thread(**kwargs)
+ 
+@@ -810,6 +945,796 @@ def __iter__(self):
+             yield np.dstack((x, y))[0]
+ 
+ 
++class Position:
++    def __init__(self, x, y, z=0.0):
++        self.x = x
++        self.y = y
++        self.z = z  # For potential 3D extension
++
++    def distance(self, other):
++        return math.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
++
++class MobileNode:
++    def __init__(self):
++        # List of (time, Position) tuples representing the trajectory.
++        self.positions = []
++
++    def add(self, time, pos):
++        self.positions.append((time, pos))
++        return True
++
++    def last_time(self):
++        if not self.positions:
++            return 0.0
++        return self.positions[-1][0]
++
++    def last_position(self):
++        if not self.positions:
++            return Position(0, 0)
++        return self.positions[-1][1]
++
++    def position_at(self, t):
++        if not self.positions:
++            return Position(0, 0)
++        if t <= self.positions[0][0]:
++            return self.positions[0][1]
++        if t >= self.positions[-1][0]:
++            return self.positions[-1][1]
++        # Binary search for the two waypoints that bracket time t.
++        low, high = 0, len(self.positions) - 1
++        while high - low > 1:
++            mid = (low + high) // 2
++            if self.positions[mid][0] > t:
++                high = mid
++            else:
++                low = mid
++        t_low, pos_low = self.positions[low]
++        t_high, pos_high = self.positions[high]
++        fraction = (t - t_low) / (t_high - t_low)
++        x = pos_low.x + fraction * (pos_high.x - pos_low.x)
++        y = pos_low.y + fraction * (pos_high.y - pos_low.y)
++        return Position(x, y)
++
++    def change_times(self):
++        return [t for t, pos in self.positions]
++
++    def cut(self, ignore_time):
++        new_positions = []
++        for t, pos in self.positions:
++            if t >= ignore_time:
++                new_positions.append((t - ignore_time, pos))
++        self.positions = new_positions
++
++class Pursue:
++    """
++    Infinite Pursue Mobility Model that mimics the variable time-stepping
++    and position updates of the Java Pursue model.
++
++    Each node (and the group leader) builds its trajectory as a sequence of
++    (time, Position) waypoints. When the simulation time advances beyond the
++    last computed waypoint, the trajectory is extended on the fly.
++    """
++    def __init__(self, mob_nodes, x=200.0, y=200.0, minspeed=0.5, maxspeed=1.5,
++                 aggressiveness=0.5, pursueRandomnessMagnitude=0.5, random_seed=1739098452062):
++
++        self.nodes_count = len(mob_nodes)
++        self.mob_nodes = mob_nodes
++        self.x = x
++        self.y = y
++        self.minspeed = minspeed
++        self.maxspeed = maxspeed
++        self.aggressiveness = aggressiveness
++        self.pursueRandomnessMagnitude = pursueRandomnessMagnitude
++        self.random_seed = random_seed
++        random.seed(self.random_seed)
++
++        # Initialize simulation time.
++        self.t = 0.0
++
++        # Initialize the group leader trajectory with a starting waypoint at time 0.
++        self.ref_node = MobileNode()
++        init_pos = self.random_position()
++        self.ref_node.add(0.0, init_pos)
++
++        # Initialize each mobile node with its own starting position at time 0.
++        self.nodes = [MobileNode() for _ in range(self.nodes_count)]
++        for node in self.nodes:
++            pos = self.random_position()
++            node.add(0.0, pos)
++
++    def random_position(self):
++        """Generate a random (x, y) position within the simulation area."""
++        return Position(random.uniform(0, self.x), random.uniform(0, self.y))
++
++    def update_ref(self):
++        """
++        Extend the group leader's trajectory if the current simulation time exceeds
++        its last computed waypoint.
++        """
++        while self.ref_node.last_time() < self.t:
++            t0 = self.ref_node.last_time()
++            src = self.ref_node.last_position()
++            dst = self.random_position()
++            speed = (self.maxspeed - self.minspeed) * random.random() + self.minspeed
++            dt = src.distance(dst) / speed
++            t_new = t0 + dt
++            self.ref_node.add(t_new, dst)
++
++    def update_node(self, node):
++        """
++        Extend a node's trajectory if the current simulation time exceeds its last waypoint.
++        The node moves toward the group leader's position (interpolated at its last time)
++        with an offset based on aggressiveness and randomness.
++        """
++        while node.last_time() < self.t:
++            t0 = node.last_time()
++            src = node.last_position()
++            # Get the group leader's position at time t0.
++            group_pos = self.ref_node.position_at(t0)
++            # Compute the new destination: move a fraction of the difference plus randomness.
++            new_x = src.x + self.aggressiveness * (group_pos.x - src.x) + random.uniform(-1, 1) * self.pursueRandomnessMagnitude
++            new_y = src.y + self.aggressiveness * (group_pos.y - src.y) + random.uniform(-1, 1) * self.pursueRandomnessMagnitude
++            # Clamp to simulation area.
++            new_x = min(max(new_x, 0), self.x)
++            new_y = min(max(new_y, 0), self.y)
++            dst = Position(new_x, new_y)
++            # Use a random speed (between minspeed and maxspeed) to compute the time step.
++            random_speed = (self.maxspeed - self.minspeed) * random.random() + self.minspeed
++            dt = src.distance(dst) / random_speed
++            t_new = t0 + dt
++            node.add(t_new, dst)
++
++    def __iter__(self):
++        """
++        Infinite iterator that yields current positions for all nodes at fixed output intervals.
++        The trajectories for the group leader and each node are extended on the fly as needed.
++        """
++        output_timestep = 0.1
++        while True:
++            # Extend the group leader's trajectory until it covers the current simulation time.
++            self.update_ref()
++            # Extend each node's trajectory similarly.
++            for node in self.nodes:
++                self.update_node(node)
++            # For each node, get its position at the current simulation time.
++            pos_list = []
++            for node in self.nodes:
++                pos = node.position_at(self.t)
++                pos_list.append((round(pos.x, 2), round(pos.y, 2), 0.0))
++            yield pos_list
++            self.t += output_timestep
++
++class ManhattanGridMobility(object):
++    class Position(object):
++        def __init__(self, x, y):
++            self.x = x
++            self.y = y
++
++        def distance(self, other):
++            return math.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
++
++        def __eq__(self, other):
++            return math.fabs(self.x - other.x) < 1e-9 and math.fabs(self.y - other.y) < 1e-9
++
++        def __repr__(self):
++            return "Position(%s, %s)" % (self.x, self.y)
++
++    def __init__(self, mob_nodes, x=200.0, y=200.0,
++                 xblocks=10, yblocks=10, updateDist=5.0, turnProb=0.5,
++                 speedChangeProb=0.2, minSpeed=0.5, meanSpeed=3.0,
++                 speedStdDev=0.2, pauseProb=0.0, maxPause=120.0,
++                 randomSeed=1739481558215):
++        # Note: no duration parameter!
++        self.mob_nodes = mob_nodes
++        self.nodes_count = len(mob_nodes)
++        self.x = x
++        self.y = y
++        self.xblocks = xblocks
++        self.yblocks = yblocks
++        self.updateDist = updateDist
++        self.turnProb = turnProb
++        self.speedChangeProb = speedChangeProb
++        self.minSpeed = minSpeed
++        self.meanSpeed = meanSpeed
++        self.speedStdDev = speedStdDev
++        # In the original code pauseProb is increased by speedChangeProb.
++        self.pauseProb = pauseProb + speedChangeProb
++        self.maxPause = maxPause
++        self.randomSeed = randomSeed
++        self.xdim = self.x / float(self.xblocks)
++        self.ydim = self.y / float(self.yblocks)
++        self.random = random.Random(self.randomSeed)
++
++        print("ManhattanGridMobility Model Parameters:")
++        print("  Area: {} x {}".format(self.x, self.y))
++        print("  Blocks: {} x {}".format(self.xblocks, self.yblocks))
++        print("  Update distance: {}".format(self.updateDist))
++        print("  Turn probability: {}".format(self.turnProb))
++        print("  Speed change probability: {}".format(self.speedChangeProb))
++        print("  Speed range (minSpeed/meanSpeed/stdDev): {} / {} / {}".format(self.minSpeed, self.meanSpeed, self.speedStdDev))
++        print("  Pause probability: {}  Max pause: {}".format(self.pauseProb, self.maxPause))
++        print("  Random seed: {}".format(self.randomSeed))
++
++        self.node_state = []
++        for i in range(self.nodes_count):
++            state = {}
++            t = 0.0
++            # Decide initial state with bias for x or y movement:
++            init_xh = self.x * (self.xblocks + 1)
++            init_xr = init_xh / (init_xh + self.y * (self.yblocks + 1))
++            if self.random.random() < init_xr:
++                # Initialize moving along x-axis.
++                y_index = int(self.random.random() * (self.yblocks + 1))
++                pos = self.Position(self.random.random() * self.x, y_index * self.ydim)
++                direction = int(self.random.random() * 2) + 2  # 2: right or 3: left
++                # Distance to the next vertical grid line:
++                base = (int(pos.x / self.xdim)) * self.xdim
++                if direction == 2:
++                    griddist = self.xdim - (pos.x - base)
++                else:
++                    griddist = pos.x - base
++            else:
++                # Initialize moving along y-axis.
++                x_index = int(self.random.random() * (self.xblocks + 1))
++                pos = self.Position(x_index * self.xdim, self.random.random() * self.y)
++                direction = int(self.random.random() * 2)  # 0: up or 1: down
++                base = (int(pos.y / self.ydim)) * self.ydim
++                if direction == 0:
++                    griddist = self.ydim - (pos.y - base)
++                else:
++                    griddist = pos.y - base
++
++            state['pos'] = pos
++            state['direction'] = direction
++            state['griddist'] = griddist
++            state['speed'] = self.meanSpeed
++            state['t'] = 0.0
++            self.node_state.append(state)
++
++        # Set the fixed timestep for continuous updates.
++        self.timestep = 0.1
++
++    def get_new_pos(self, src, dist, dir):
++        if dir == 0:  # up
++            return self.Position(src.x, src.y + dist)
++        elif dir == 1:  # down
++            return self.Position(src.x, src.y - dist)
++        elif dir == 2:  # right
++            return self.Position(src.x + dist, src.y)
++        elif dir == 3:  # left
++            return self.Position(src.x - dist, src.y)
++        else:
++            return src
++
++    def out_of_bounds(self, pos):
++        return (pos.x < 0.0) or (pos.y < 0.0) or (pos.x > self.x) or (pos.y > self.y)
++
++    def align_pos(self, pos):
++        aligned_x = round(pos.x / self.xdim) * self.xdim
++        aligned_y = round(pos.y / self.ydim) * self.ydim
++        aligned_x = max(0.0, min(aligned_x, self.x))
++        aligned_y = max(0.0, min(aligned_y, self.y))
++        return self.Position(aligned_x, aligned_y)
++
++    def must_turn(self, pos, dir):
++        if dir == 0 and math.isclose(pos.y, self.y, rel_tol=1e-6):
++            return True
++        if dir == 1 and math.isclose(pos.y, 0.0, rel_tol=1e-6):
++            return True
++        if dir == 2 and math.isclose(pos.x, self.x, rel_tol=1e-6):
++            return True
++        if dir == 3 and math.isclose(pos.x, 0.0, rel_tol=1e-6):
++            return True
++        return False
++
++    def reflect_position(self, pos, direction):
++        """
++        Reflect the position along the boundary.
++        For example, if moving right (2) and pos.x > self.x, reflect to the left.
++        """
++        new_x = pos.x
++        new_y = pos.y
++        new_direction = direction
++        if direction == 0 and pos.y > self.y:
++            new_y = self.y - (pos.y - self.y)
++            new_direction = 1
++        elif direction == 1 and pos.y < 0.0:
++            new_y = 0.0 + (0.0 - pos.y)
++            new_direction = 0
++        elif direction == 2 and pos.x > self.x:
++            new_x = self.x - (pos.x - self.x)
++            new_direction = 3
++        elif direction == 3 and pos.x < 0.0:
++            new_x = 0.0 + (0.0 - pos.x)
++            new_direction = 2
++        return self.Position(new_x, new_y), new_direction
++
++    def compute_griddist(self, pos, direction):
++        if direction in [2, 3]:
++            base = (int(pos.x / self.xdim)) * self.xdim
++            if direction == 2:
++                return self.xdim - (pos.x - base)
++            else:
++                return pos.x - base
++        else:
++            base = (int(pos.y / self.ydim)) * self.ydim
++            if direction == 0:
++                return self.ydim - (pos.y - base)
++            else:
++                return pos.y - base
++
++    def update_node(self, state, dt):
++        """
++        Update a node's state for a time interval dt.
++        If the movement would take the node out-of-bound, reflect the movement
++        so that the node is redirected backward (as on a dead-end street).
++        """
++        d = state['speed'] * dt
++        # Calculate candidate new position.
++        new_pos = self.get_new_pos(state['pos'], d, state['direction'])
++        # If new position is within bounds, and movement is less than remaining griddist:
++        if d < state['griddist'] and not self.out_of_bounds(new_pos):
++            state['pos'] = new_pos
++            state['griddist'] -= d
++            state['t'] += dt
++        else:
++            # If new_pos is out of bounds, reflect it.
++            if self.out_of_bounds(new_pos):
++                new_pos, new_direction = self.reflect_position(new_pos, state['direction'])
++                state['direction'] = new_direction
++                # Recompute griddist after reflection.
++                state['griddist'] = self.compute_griddist(new_pos, new_direction)
++                # We assume the full dt is consumed in this case.
++                state['pos'] = new_pos
++                state['t'] += dt
++            else:
++                # Node reaches or exceeds grid crossing.
++                t_event = state['griddist'] / state['speed']
++                # Move exactly to grid crossing.
++                new_pos = self.get_new_pos(state['pos'], state['griddist'], state['direction'])
++                new_pos = self.align_pos(new_pos)
++                state['pos'] = new_pos
++                state['t'] += t_event
++
++                # Update direction based on new position:
++                if state['direction'] < 2:  # was moving vertically
++                    if 0 < new_pos.x < self.x:
++                        state['direction'] = int(self.random.random() * 2) + 2
++                    else:
++                        state['direction'] = 3
++                    state['griddist'] = self.xdim
++                else:  # was moving horizontally
++                    if 0 < new_pos.y < self.y:
++                        state['direction'] = int(self.random.random() * 2)
++                    else:
++                        state['direction'] = 1
++                    state['griddist'] = self.ydim
++
++                # Optionally, incorporate turning probability:
++                if self.random.random() < self.turnProb:
++                    if state['direction'] < 2:
++                        state['direction'] = int(self.random.random() * 2) + 2
++                        state['griddist'] = self.xdim
++                    else:
++                        state['direction'] = int(self.random.random() * 2)
++                        state['griddist'] = self.ydim
++
++                # Speed changes and pauses:
++                if self.random.random() < self.pauseProb:
++                    if self.random.random() < self.speedChangeProb:
++                        state['speed'] = max(self.minSpeed, self.meanSpeed + self.random.gauss(0, self.speedStdDev))
++                    else:
++                        pause_time = self.random.random() * self.maxPause
++                        state['t'] += pause_time
++
++                remaining_dt = dt - t_event
++                if remaining_dt > 0:
++                    self.update_node(state, remaining_dt)
++
++    def __iter__(self):
++        """
++        Infinite iterator that yields synchronized positions for all nodes
++        at fixed timesteps. Each yield is a list of (x, y, 0.0) tuples.
++        """
++        while True:
++            positions = []
++            for state in self.node_state:
++                self.update_node(state, self.timestep)
++                positions.append((round(state['pos'].x, 2),
++                                  round(state['pos'].y, 2),
++                                  0.0))
++            yield positions
++
++
++
++
++class TIMM_Node(object):
++    def __init__(self, node_id, group_id, slow_speed, fast_speed, rng):
++        self.node_id = node_id
++        self.group_id = group_id
++        # Save speed parameters for later use.
++        self.slow_speed = slow_speed
++        self.fast_speed = fast_speed
++        self.current_speed = rng.uniform(slow_speed, fast_speed)
++        self.position = None  # Current vertex (string)
++
++class TIMMMobility(object):
++    """
++    Continuous TIMM-like Mobility Model for Mininet-WiFi.
++    
++    Nodes are organized in groups (using Group_size) and each node starts at the 
++    vertex identified by "StartVertex" in the building graph. Instead of precomputing
++    events up to a fixed duration, events are processed incrementally in the __iter__
++    method. The simulation now runs continuously (duration = infinity) and the 
++    simulation framework is responsible for stopping it.
++    """
++    def __init__(self, mob_nodes, x=200.0, y=200.0, 
++                 building_graph='building_graph.txt',
++                 Group_size=[4, 4, 4, 4],
++                 Group_starttimes=[10.0, 20.0, 30.0, 40.0],
++                 Group_endtime=[float('inf'), float('inf'), float('inf'), float('inf')],
++                 Group_max_distance=[float('inf')]*4,
++                 Graph_max_distance_vertices=1000.0,
++                 Group_minimal_size=2,
++                 Door_wait_or_opening_time=[16.1, 66.8],
++                 Slow_speed=[0.577, 0.106],
++                 Fast_speed=[1.037, 0.212],
++                 randomSeed=1739281330759,
++                 **kwargs):
++        self.mob_nodes = mob_nodes
++        self.x = x
++        self.y = y
++        # Run indefinitely.
++        self.duration = float('inf')
++        self.building_graph_file = building_graph
++        self.Group_size = Group_size
++        self.Group_starttimes = Group_starttimes
++        self.Group_endtime = Group_endtime
++        self.Group_max_distance = Group_max_distance
++        self.Graph_max_distance_vertices = Graph_max_distance_vertices
++        self.Group_minimal_size = Group_minimal_size
++        self.Door_wait_or_opening_time = Door_wait_or_opening_time
++        # Use the first element from speed arrays as in the Java TIMM.
++        self.slow_speed = Slow_speed[0]
++        self.fast_speed = Fast_speed[0]
++        self.randomSeed = randomSeed
++
++        print("TIMMMobility Model Parameters:")
++        print("  Area: {} x {}".format(self.x, self.y))
++        print("  Building graph: {}".format(self.building_graph_file))
++        print("  Group sizes: {}".format(self.Group_size))
++        print("  Group start times: {}".format(self.Group_starttimes))
++        print("  Group end times: {}".format(self.Group_endtime))
++        print("  Group max distances: {}".format(self.Group_max_distance))
++        print("  Graph max distance vertices: {}".format(self.Graph_max_distance_vertices))
++        print("  Group minimal size: {}".format(self.Group_minimal_size))
++        print("  Door wait/opening times: {}".format(self.Door_wait_or_opening_time))
++        print("  Slow speed parameters: {}".format(self.slow_speed))
++        print("  Fast speed parameters: {}".format(self.fast_speed))
++        print("  Random seed: {}".format(self.randomSeed))
++
++
++        # Total number of nodes.
++        self.nn = len(self.mob_nodes)
++        if sum(Group_size) != self.nn:
++            # If the provided group sizes do not sum to the number of nodes, treat all nodes as one group.
++            Group_size = [self.nn]
++        self.Group_size = Group_size
++        
++        for size in self.Group_size:
++            if size < self.Group_minimal_size:
++                raise ValueError("A group size is less than the minimal group size.")
++
++        self.rng = random.Random(self.randomSeed)
++        
++        # Parse the building graph and find the start vertex.
++        self.graph = self._parse_building_graph(self.building_graph_file)
++        self.start_vertex = self._find_start_vertex()
++        if self.start_vertex is None:
++            raise ValueError("No StartVertex found in building graph.")
++        self.start_position = self.graph.nodes[self.start_vertex]['pos']
++
++        # Create groups of TIMM_Node objects.
++        self.groups = []  # List of groups; each group is a list of TIMM_Node objects.
++        node_idx = 0
++        for group_id, size in enumerate(self.Group_size):
++            group_nodes = []
++            for i in range(size):
++                node_obj = TIMM_Node(node_id=node_idx + 1,
++                                     group_id=group_id,
++                                     slow_speed=self.slow_speed,
++                                     fast_speed=self.fast_speed,
++                                     rng=self.rng)
++                # Initialize each node's starting vertex.
++                node_obj.position = self.start_vertex
++                group_nodes.append(node_obj)
++                node_idx += 1
++            self.groups.append(group_nodes)
++        
++        # Initialize waypoints: key = node_id, value = list of (time, (x,y)) tuples.
++        self.waypoints = {node_id: [(0.0, self.start_position)] for node_id in range(1, self.nn + 1)}
++        
++        # Create an event queue for group events; each event is a tuple (time, group_id).
++        self.event_queue = []
++        # Add a dummy event (time 0, group_id -1) – not processed.
++        heapq.heappush(self.event_queue, (0.0, -1))
++        # Schedule each group's start event.
++        for group_id in range(len(self.Group_size)):
++            start_time = self.Group_starttimes[group_id] if group_id < len(self.Group_starttimes) else 0.0
++            heapq.heappush(self.event_queue, (start_time, group_id))
++        # Do NOT call _simulate() here—instead, process events incrementally in __iter__.
++
++    def _parse_building_graph(self, filepath):
++        g = nx.Graph()
++        with open(filepath, 'r') as f:
++            for line in f:
++                line = line.strip()
++                if not line or line.startswith('#'):
++                    continue
++                parts = line.split(',')
++                # Expected format: "node=Name,x,y,neighbor1;neighbor2;..."
++                node_name = parts[0].split('=')[1]
++                x, y = float(parts[1]), float(parts[2])
++                neighbors = parts[3].split(';')
++                g.add_node(node_name, pos=(x, y))
++                for nbr in neighbors:
++                    g.add_edge(node_name, nbr)
++        return g
++
++    def _find_start_vertex(self):
++        for n in self.graph.nodes:
++            if "StartVertex" in n:
++                return n
++        return None
++
++    def _euclidean_distance(self, v1, v2):
++        x1, y1 = self.graph.nodes[v1]['pos']
++        x2, y2 = self.graph.nodes[v2]['pos']
++        return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
++
++    def _travel_time(self, distance, speed):
++        if speed <= 0:
++            return float('inf')
++        return distance / speed
++
++    def __iter__(self):
++        """
++        Infinite iterator that yields synchronized positions for all nodes
++        at fixed timesteps (e.g., every 0.1 seconds). At each timestep, it processes
++        all events scheduled up to the current time and then yields the current positions.
++        """
++        timestep = 0.1
++        current_time = 0.0
++        while True:
++            # Process all events scheduled up to current_time.
++            while self.event_queue and self.event_queue[0][0] <= current_time:
++                t, group_id = heapq.heappop(self.event_queue)
++                if group_id < 0 or group_id >= len(self.groups):
++                    continue
++                if t > self.Group_endtime[group_id]:
++                    continue
++                group = self.groups[group_id]
++                new_times = []
++                for node in group:
++                    current_vertex = node.position
++                    all_neighbors = list(self.graph.neighbors(current_vertex))
++                    allowed = []
++                    for nbr in all_neighbors:
++                        d = self._euclidean_distance(current_vertex, nbr)
++                        if d <= self.Graph_max_distance_vertices and d <= self.Group_max_distance[group_id]:
++                            allowed.append((nbr, d))
++                    if allowed:
++                        chosen, distance = self.rng.choice(allowed)
++                    elif all_neighbors:
++                        chosen = self.rng.choice(all_neighbors)
++                        distance = self._euclidean_distance(current_vertex, chosen)
++                    else:
++                        # No available moves.
++                        continue
++                    door_delay = 0.0
++                    if "Door" in chosen:
++                        door_delay = self.Door_wait_or_opening_time[0]
++                        print("Door delay applied at vertex {}: {} seconds".format(chosen, door_delay))
++                    # Update node position.
++                    node.position = chosen
++                    node.current_speed = self.rng.uniform(node.slow_speed, node.fast_speed)
++                    travel_t = self._travel_time(distance, node.current_speed)
++                    new_event_time = t + travel_t + door_delay
++                    pos = self.graph.nodes[chosen]['pos']
++                    self.waypoints[node.node_id].append((new_event_time, pos))
++                    new_times.append(new_event_time)
++                if new_times:
++                    group_next_event = min(new_times)
++                    if group_next_event <= self.Group_endtime[group_id]:
++                        heapq.heappush(self.event_queue, (group_next_event, group_id))
++            # Yield the latest positions for all nodes.
++            positions = []
++            for node_id in range(1, self.nn + 1):
++                wp_list = self.waypoints[node_id]
++                last_wp = wp_list[0]
++                for event in wp_list:
++                    if event[0] <= current_time:
++                        last_wp = event
++                    else:
++                        break
++                pos = last_wp[1]
++                positions.append((round(pos[0], 2), round(pos[1], 2), 0.0))
++            yield positions
++            current_time += timestep
++
++
++
++# Define basic node states and event types
++class State:
++    NEW = "NEW"
++    MOVING = "MOVING"
++    WAITING = "WAITING"
++
++class EventType:
++    START_WAITING = "START_WAITING"
++    MEET = "MEET"
++
++class Event:
++    def __init__(self, event_type, firstNode, secondNode, time):
++        self.type = event_type
++        self.firstNode = firstNode
++        self.secondNode = secondNode  # -1 if not applicable
++        self.time = time
++
++    def __lt__(self, other):
++        return self.time < other.time
++
++class SWIMMobility:
++    def __init__(self, mob_nodes, x=200.0, y=200.0, nodeRadius=0.1, cellDistanceWeight=0.5, nodeSpeedMultiplier=0.1,
++                 waitingTimeExponent=2.0, waitingTimeUpperBound=50.0,
++                 randomSeed=123456789):
++        # Basic simulation parameters; duration is now set to infinity.
++        self.nn = len(mob_nodes)
++        self.area_x = x
++        self.area_y = y
++        self.duration = float('inf')
++        self.nodeRadius = nodeRadius
++        self.cellDistanceWeight = cellDistanceWeight
++        self.nodeSpeedMultiplier = nodeSpeedMultiplier
++        self.waitingTimeExponent = waitingTimeExponent
++        self.waitingTimeUpperBound = waitingTimeUpperBound
++        self.randomSeed = randomSeed
++
++        self.rng = random.Random(self.randomSeed)
++
++        print("SWIMMobility Model Parameters:")
++        print("  Area: {} x {}".format(self.area_x, self.area_y))
++        print("  Node radius: {}".format(self.nodeRadius))
++        print("  Cell distance weight: {}".format(self.cellDistanceWeight))
++        print("  Node speed multiplier: {}".format(self.nodeSpeedMultiplier))
++        print("  Waiting time exponent: {}".format(self.waitingTimeExponent))
++        print("  Waiting time upper bound: {}".format(self.waitingTimeUpperBound))
++        print("  Random seed: {}".format(self.randomSeed))
++
++
++        # Compute cell parameters.
++        self.cellLength = self.nodeRadius / math.sqrt(2.0)
++        self.cellCountPerSide = int(math.ceil(1.0 / self.cellLength))
++        self.cellCount = self.cellCountPerSide * self.cellCountPerSide
++
++        # Initialize nodes as dictionaries.
++        self.nodes = []
++        for i in range(self.nn):
++            pos = np.array([self.rng.random() * self.area_x, self.rng.random() * self.area_y])
++            node = {
++                "id": i,
++                "home": pos.copy(),
++                "pos": pos.copy(),
++                "dest": pos.copy(),
++                "state": State.NEW,
++                "posTime": 0.0,
++                "speed": 0.0,
++                "waitTime": 0.0,
++                "currentCell": self.getCellIndexFromPos(pos),
++                "destinationCell": self.getCellIndexFromPos(pos),
++                "density": math.pi * (self.nodeRadius ** 2) * self.nn,
++                "cellWeights": [0.0 for _ in range(self.cellCount)],
++                "number_of_nodes_seen": [0 for _ in range(self.cellCount)],
++                "number_of_nodes_seen_last_visit": [0 for _ in range(self.cellCount)]
++            }
++            self.nodes.append(node)
++
++        # Initialize meetInPlace matrix.
++        self.meetInPlace = [[False for _ in range(self.nn)] for _ in range(self.nn)]
++
++        # Initialize cell weights for each node.
++        for i in range(self.nn):
++            self.initCellWeights(i)
++
++        # Create an event queue and add initial events.
++        self.eventQueue = []
++        for i in range(self.nn):
++            for j in range(i + 1, self.nn):
++                if self.circles(self.nodes[i]["pos"], self.nodeRadius,
++                                self.nodes[j]["pos"], self.nodeRadius):
++                    heapq.heappush(self.eventQueue, Event(EventType.MEET, i, j, 0.0))
++        for i in range(self.nn):
++            heapq.heappush(self.eventQueue, Event(EventType.START_WAITING, i, -1, 0.0))
++
++        # Open trace file for output (retained as in original implementation).
++        self.traceFile = open("trace.csv", "w")
++        self.traceFile.write("node_id time x y\n")
++
++    def getCellIndexFromPos(self, pos):
++        row = int(pos[1] / self.cellLength)
++        col = int(pos[0] / self.cellLength)
++        row = min(row, self.cellCountPerSide - 1)
++        col = min(col, self.cellCountPerSide - 1)
++        return row * self.cellCountPerSide + col
++
++    def initCellWeights(self, i):
++        # Initialize cell weights for node i (placeholder implementation).
++        self.nodes[i]["cellWeights"] = [self.rng.random() for _ in range(self.cellCount)]
++
++    def circles(self, pos1, r1, pos2, r2):
++        # Return True if circles with centers pos1 and pos2 (and radii r1, r2) overlap.
++        dist = math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
++        return dist <= (r1 + r2)
++
++    def updateNode(self, node, current_time):
++        """
++        Update the node's state based on its WAITING status.
++        For simplicity, if the node is waiting and its wait time has passed,
++        assign a new random position and mark it as MOVING.
++        """
++        if node["state"] == State.WAITING and current_time >= node["posTime"] + node["waitTime"]:
++            new_x = self.rng.random() * self.area_x
++            new_y = self.rng.random() * self.area_y
++            node["pos"] = np.array([new_x, new_y])
++            node["posTime"] = current_time
++            node["state"] = State.MOVING
++        return node["pos"]
++
++    def processEvents(self, current_time):
++        """
++        Process all events scheduled up to the current time.
++        This includes MEET events (which update the meetInPlace matrix and reschedule themselves)
++        and START_WAITING events (which change node state and schedule a new waiting period).
++        """
++        while self.eventQueue and self.eventQueue[0].time <= current_time:
++            event = heapq.heappop(self.eventQueue)
++            if event.type == EventType.MEET:
++                # Update meetInPlace for the pair.
++                self.meetInPlace[event.firstNode][event.secondNode] = True
++                self.meetInPlace[event.secondNode][event.firstNode] = True
++                # Schedule next MEET event with an example delay.
++                new_time = event.time + self.rng.random() * 10
++                heapq.heappush(self.eventQueue, Event(EventType.MEET, event.firstNode, event.secondNode, new_time))
++            elif event.type == EventType.START_WAITING:
++                node = self.nodes[event.firstNode]
++                node["state"] = State.WAITING
++                node["waitTime"] = self.rng.random() * self.waitingTimeUpperBound
++                node["posTime"] = event.time
++                # Schedule a new START_WAITING event for this node.
++                new_time = event.time + node["waitTime"] + self.rng.random() * 5
++                heapq.heappush(self.eventQueue, Event(EventType.START_WAITING, event.firstNode, -1, new_time))
++
++    def __iter__(self):
++        """
++        Infinite iterator that yields synchronized positions for all nodes at fixed timesteps.
++        Each yielded position is a list of (x, y, 0.0) tuples.
++        """
++        timestep = 0.1
++        current_time = 0.0
++        while True:
++            # Process events up to the current time.
++            self.processEvents(current_time)
++            positions = []
++            for node in self.nodes:
++                pos = self.updateNode(node, current_time)
++                positions.append((round(pos[0], 2), round(pos[1], 2), 0.0))
++                # Also write the node's position to the trace file.
++                self.traceFile.write("{} {:.2f} {:.2f} {:.2f}\n".format(node['id'], current_time, pos[0], pos[1]))
++            yield positions
++            current_time += timestep
++
++
++
+ class StochasticWalk(object):
+     def __init__(self, nodes, FL_DISTR, VEL_DISTR, WT_DISTR=None,
+                  border_policy='reflect', model=None):
+@@ -1181,6 +2106,17 @@ def random_direction(*args, **kwargs):
+ def truncated_levy_walk(*args, **kwargs):
+     return iter(TruncatedLevyWalk(*args, **kwargs))
+ 
++def pursue(*args, **kwargs):
++    return iter(Pursue(*args, **kwargs))
++
++def manhattanGridMobility(*args, **kwargs):
++    return iter(ManhattanGridMobility(*args, **kwargs))
++
++def tIMMMobility(*args, **kwargs):
++    return iter(TIMMMobility(*args, **kwargs))
++
++def swimMobility(*args, **kwargs):
++    return iter(SWIMMobility(*args, **kwargs))
+ 
+ def heterogeneous_truncated_levy_walk(*args, **kwargs):
+     return iter(HeterogeneousTruncatedLevyWalk(*args, **kwargs))
+@@ -1200,7 +2136,7 @@ def gauss_markov(nodes, velocity_mean=1., alpha=0.99, variance=1.):
+         The mean velocity
+       *alpha*:
+         The tuning parameter used to vary the randomness
+-      *variance*:
++          *variance*:
+         The randomness variance
+     """
+     nr_nodes = len(nodes)
+diff --git a/mn_wifi/net.py b/mn_wifi/net.py
+index e4da4c5d..03cd60ef 100644
+--- a/mn_wifi/net.py
++++ b/mn_wifi/net.py
+@@ -171,6 +171,38 @@ def __init__(self, accessPoint=OVSKernelAP, station=Station, car=Car,
+         self.epoch = []
+         self.velocity = ()
+         self.initial_mediums = []
++        self.minspeed = 0.5
++        self.maxspeed = 1.5
++        self.aggressiveness = 0.5
++        self.pursueRandomnessMagnitude = 0.5
++        self.xblocks = 10
++        self.yblocks = 10
++        self.updateDist = 5.0
++        self.turnProb = 0.5
++        self.speedChangeProb = 0.2
++        self.minSpeed = 0.5       # Note: ensure this name does not conflict with 'minspeed'
++        self.meanSpeed = 3.0
++        self.speedStdDev = 0.2
++        self.pauseProb = 0.0
++        self.maxPause = 120.0
++        self.building_graph = 'building_graph.txt'
++        self.Group_size = [1, 1, 1, 1]
++        self.Group_starttimes = [1.0, 2.0, 3.0, 4.0]
++        self.Group_endtime = [float('inf'), float('inf'), float('inf'), float('inf')]
++        self.Group_max_distance = [float('inf')]*4
++        self.Graph_max_distance_vertices = 1000.0
++        self.Group_minimal_size = 2
++        self.Door_wait_or_opening_time = [16.1, 66.8]
++        self.Slow_speed = [10.0, 1.0]
++        self.Fast_speed = [15.0, 2.0]
++        self.nodeRadius = 0.1
++        self.cellDistanceWeight = 0.5
++        self.nodeSpeedMultiplier = 0.1
++        self.waitingTimeExponent = 2.0
++        self.waitingTimeUpperBound = 50.0
++        self.x = 100.0
++        self.y = 100.0
++        self.random_seed = 1
+ 
+         if autoSetPositions and link == wmediumd:
+             self.wmediumd_mode = interference
+@@ -1275,12 +1307,16 @@ def get_mobility_params(self):
+                       'max_x', 'max_y', 'max_z',
+                       'min_v', 'max_v', 'min_wt', 'max_wt',
+                       'velocity_mean', 'alpha', 'variance', 'aggregation',
+-                      'g_velocity']
++                      'g_velocity', 'minspeed', 'maxspeed', 'aggressiveness', 'pursueRandomnessMagnitude', 
++                      'updateDist', 'turnProb', 'speedChangeProb', 'minSpeed', 'meanSpeed', 'speedStdDev', 
++                      'pauseProb', 'maxPause', 'nodeRadius', 'cellDistanceWeight', 'nodeSpeedMultiplier', 'waitingTimeExponent', 'waitingTimeUpperBound']
+         args = ['stations', 'cars', 'aps', 'draw', 'seed',
+                 'roads', 'mob_start_time', 'mob_stop_time',
+                 'links', 'mob_model', 'mob_rep', 'reverse',
+                 'ac_method', 'pointlist', 'n_groups', 'aggregation_epoch', 'epoch',
+-                'velocity']
++                'velocity', 'xblocks', 'yblocks', 'x', 'y', 'random_seed',
++                'building_graph', 'Group_size', 'Group_starttimes', 'Group_endtime', 'Group_max_distance',
++                'Graph_max_distance_vertices', 'Group_minimal_size', 'Door_wait_or_opening_time', 'Slow_speed', 'Fast_speed']
+         args += float_args
+         for arg in args:
+             if arg in float_args:

@@ -123,7 +123,7 @@ class SWIM:
 
         # Open trace file for writing.
         # Record only time, node id, x and y position; no header.
-        self.traceFile = open("trace.csv", "w")
+        self.traceFile = open("trace_SWIM.csv", "w")
 
         # Initialize meetInPlace matrix (not used extensively here)
         self.meetInPlace = [[False for _ in range(self.num_nodes)] for _ in range(self.num_nodes)]
@@ -467,4 +467,4 @@ if __name__ == "__main__":
         config = json.load(f)
     sim = SWIM(config)
     sim.simulate()
-    print("Simulation complete. Trace written to trace.csv")
+    print("Simulation complete. Trace written to trace_SWIM.csv")

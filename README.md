@@ -55,7 +55,7 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
 **Additional Information**
   - These modifications are not yet part of the official Mininet-WiFi repository.
   - If you encounter issues, please refer to the documentation provided in this repository or open an issue.
-  - For further details on the integration process and the design decisions, please consult the full project report.
+  - For further details on the integration process and the design decisions, please check the full project report.
 
 
 # Mobility_models_in_python

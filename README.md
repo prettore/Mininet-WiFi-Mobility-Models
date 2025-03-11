@@ -40,7 +40,7 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
 5. **Apply the Patch**
    From the root of your Mininet-WiFi directory, apply the patch using:
    ```bash
-   patch -p1 < /path/to/Mobility_Models_in_Python/mininet-wifi-mobility.patch
+   patch -p1 < /path/to/mininet-wifi-mobility.patch
 
 7. **Rebuild Mininet-WiFi**
    If necessary, rebuild and reinstall Mininet-WiFi from the root of your Mininet-Wifi directory:

@@ -4,7 +4,7 @@ This repository contains a patch file(mininet_wifi_mobility.patch) that integrat
 - `mn_wifi/mobility.py`
 - `mn_wifi/net.py`
 - `examples/mobilityModel.py`
-- `examples/building_graph.txt`
+
 
 ## How to Apply the Patch
 
@@ -21,7 +21,7 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
     - `cp mn_wifi/mobility.py mn_wifi/mobility.py.bak`
     - `cp mn_wifi/net.py mn_wifi/net.py.bak`
     - `cp examples/mobilityModelPursue.py examples/mobilityModel.py.bak`
-    - `cp examples/building_graph.txt examples/building_graph.txt.bak`
+    
 
 3. **Download the Patch File**
     Clone this repository to obtain the patch file:

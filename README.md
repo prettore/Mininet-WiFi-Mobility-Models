@@ -21,36 +21,39 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
 
 2. **Backup Original Files**
     It is recommended to backup the original files before applying the patch. Run the following commands:
-
-cp mn_wifi/mobility.py mn_wifi/mobility.py.bak
-cp mn_wifi/net.py mn_wifi/net.py.bak
-cp examples/mobilityModelPursue.py examples/mobilityModelPursue.py.bak
-cp examples/mobilityModelManhattan.py examples/mobilityModelManhattan.py.bak
-cp examples/mobilityModelTIMM.py examples/mobilityModelTIMM.py.bak
-cp examples/mobilityModelSWIM.py examples/mobilityModelSWIM.py.bak
-cp examples/building_graph.txt examples/building_graph.txt.bak
+    - `cp mn_wifi/mobility.py mn_wifi/mobility.py.bak`
+    - `cp mn_wifi/net.py mn_wifi/net.py.bak`
+    - `cp examples/mobilityModelPursue.py examples/mobilityModelPursue.py.bak`
+    - `cp examples/mobilityModelManhattan.py examples/mobilityModelManhattan.py.bak`
+    - `cp examples/mobilityModelTIMM.py examples/mobilityModelTIMM.py.bak`
+    - `cp examples/mobilityModelSWIM.py examples/mobilityModelSWIM.py.bak`
+    - `cp examples/building_graph.txt examples/building_graph.txt.bak`
 
 3. **Download the Patch File**
-Clone this repository to obtain the patch file:
-git clone https://github.com/prettore/Mobility_Models_in_Python.git
-Alternatively, you can download the mininet-wifi-mobility.patch file directly from this repository using the GitHub web interface.
+    Clone this repository to obtain the patch file:
+    ```bash
+    git clone https://github.com/prettore/Mobility_Models_in_Python.git
+    Alternatively, you can download the mininet-wifi-mobility.patch file directly from this repository using the GitHub web interface.
 
-4. **Apply the Patch**
-From the root of your Mininet-WiFi directory, apply the patch using:
-patch -p1 < /path/to/Mobility_Models_in_Python/mininet-wifi-mobility.patch
+5. **Apply the Patch**
+   From the root of your Mininet-WiFi directory, apply the patch using:
+   ```bash
+   patch -p1 < /path/to/Mobility_Models_in_Python/mininet-wifi-mobility.patch
 
-5. **Rebuild Mininet-WiFi**
-If necessary, rebuild and reinstall Mininet-WiFi:
-sudo make install
+7. **Rebuild Mininet-WiFi**
+   If necessary, rebuild and reinstall Mininet-WiFi:
+   ```bash
+   sudo make install
 
-6. **Run Mininet-WiFi**
-You can now run Mininet-WiFi with the new mobility models. For example, to run the Pursue mobility model:
-sudo python examples/mobilityModelPursue.py
+9. **Run Mininet-WiFi**
+   You can now run Mininet-WiFi with the new mobility models. For example, to run the Pursue mobility model:
+   ```bash
+   sudo python examples/mobilityModelPursue.py
 
 **Additional Information**
-These modifications are not yet part of the official Mininet-WiFi repository.
-If you encounter issues, please refer to the documentation provided in this repository or open an issue.
-For further details on the integration process and the design decisions, please consult the full project report.
+  - These modifications are not yet part of the official Mininet-WiFi repository.
+  - If you encounter issues, please refer to the documentation provided in this repository or open an issue.
+  - For further details on the integration process and the design decisions, please consult the full project report.
 
 
 # Mobility_models_in_python

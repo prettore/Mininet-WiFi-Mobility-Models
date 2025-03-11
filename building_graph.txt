@@ -1,0 +1,6 @@
+Pos=StartVertex,0,0,DoorEntrance;Corridor,Entrance
+Pos=DoorEntrance,50,0,StartVertex;Room1,Door
+Pos=Corridor,0,50,StartVertex;Room2,Hall
+Pos=Room1,50,50,DoorEntrance;DoorExit,Room
+Pos=Room2,0,100,Corridor;DoorExit,Room
+Pos=DoorExit,50,100,Room1;Room2,Door

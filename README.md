@@ -43,14 +43,14 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
    patch -p1 < /path/to/Mobility_Models_in_Python/mininet-wifi-mobility.patch
 
 7. **Rebuild Mininet-WiFi**
-   If necessary, rebuild and reinstall Mininet-WiFi:
+   If necessary, rebuild and reinstall Mininet-WiFi from the root of your Mininet-Wifi directory:
    ```bash
    sudo make install
 
 9. **Run Mininet-WiFi**
    You can now run Mininet-WiFi with the new mobility models. For example, to run the Pursue mobility model:
    ```bash
-   sudo python examples/mobilityModelPursue.py
+   sudo python mn_wifi/examples/mobilityModelPursue.py
 
 **Additional Information**
   - These modifications are not yet part of the official Mininet-WiFi repository.

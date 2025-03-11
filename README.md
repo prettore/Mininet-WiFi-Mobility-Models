@@ -68,6 +68,108 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
 
 
 # Mobility models in python
+
+## Model Overviews
+
+### 1. Manhattan Grid Mobility Model
+**Explanation:**  
+This model simulates node movement on an urban grid. Nodes move along predetermined horizontal and vertical roads and make turning decisions at intersections.
+
+**Key Parameters (from `config_manhattan.ini`):**
+- `x`, `y`: Dimensions of the simulation area.
+- `xblocks`, `yblocks`: Number of grid blocks.
+- `updateDist`: Distance after which nodes can update their speed or direction.
+- `turnProb`: Probability of turning at intersections.
+- `minSpeed`, `meanSpeed`, `speedStdDev`: Speed parameters.
+- `pauseProb`, `maxPause`: Pause settings.
+- `randomSeed`: Seed for random number generation.
+
+**Expected Output:**  
+A CSV file (e.g., `nodes_trace.csv`) containing node IDs, timestamps, and their x and y coordinates.
+
+**Important Features:**
+- **Grid Alignment:** Nodes follow a grid pattern and align at intersections.
+- **Turning Logic:** Probabilistic turning at intersections with forced turns at boundaries.
+- **Speed and Pause Variability:** Allows for random speed changes and pauses, emulating urban traffic behavior.
+
+---
+
+### 2. Pursue Mobility Model
+**Explanation:**  
+This model simulates group mobility by having nodes (pursuers) follow a moving reference (leader) node. Each node gradually moves toward the reference with some random deviation.
+
+**Key Parameters (from `config_pursue.ini`):**
+- `num_nodes`: Number of mobile nodes.
+- `grid_x`, `grid_y`: Dimensions of the simulation area.
+- `min_speed`, `max_speed`: Speed range.
+- `aggressiveness`: Fraction of the distance toward the reference that is covered at each update.
+- `pursue_randomness`: Magnitude of random offset added to node movement.
+- `random_seed`: Seed for random number generation.
+- `duration` and `ignore`: Define simulation time and an initial phase to ignore.
+
+**Expected Output:**  
+A CSV file (e.g., `scenario.csv`) with the trajectory of each node over time.
+
+**Important Features:**
+- **Leader-Follower Dynamics:** Implements a leader node whose trajectory is followed by other nodes.
+- **Interpolation:** Nodes update positions based on interpolation of the leader’s path.
+- **Random Perturbation:** Incorporates randomness in movement to simulate natural behavior.
+
+---
+
+### 3. TIMM Mobility Model
+**Explanation:**  
+TIMM (Tactical Indoor Mobility Model) simulates indoor mobility using a building graph where nodes are grouped and move along corridors, rooms, and doorways. It accounts for delays such as door opening times.
+
+**Key Parameters (from `config_TIMM.json`):**
+- `x`, `y`: Dimensions of the simulation area.
+- `Building_graph`: File path to the building graph.
+- `Group_size`: Number of nodes per group.
+- `Group_starttimes` and `Group_endtime`: Timing for group movements.
+- `Slow_speed` and `Fast_speed`: Speed parameters for movement.
+- `Door_wait_or_opening_time`: Delay for door transitions.
+- `Graph_max_distance_vertices`, `Group_max_distance`, `Group_minimal_size`: Group movement constraints.
+- `randomSeed`: Seed for random number generation.
+
+**Expected Output:**  
+A trace file (e.g., `trace_TIMM.csv`) that records node IDs, timestamps, and their x and y coordinates representing indoor movements.
+
+**Important Features:**
+- **Graph-Based Navigation:** Uses a building graph to constrain node movement to realistic indoor pathways.
+- **Group Dynamics:** Nodes are organized into groups with coordinated start and end times.
+- **Door Delay Modeling:** Introduces realistic delays when nodes move through doorways.
+
+---
+
+### 4. SWIM Mobility Model
+**Explanation:**  
+The SWIM (Small World In Motion) model simulates realistic mobility by assigning each node a home location and alternating between moving and waiting. This creates a small-world effect with predominantly local movement and occasional long-range trips.
+
+**Key Parameters (from `config_SWIM.json`):**
+- `x`, `y`: Dimensions of the simulation area.
+- `nn`: Total number of nodes.
+- `nodeRadius`: Radius for contact detection.
+- `cellDistanceWeight`: Balances distance from home and local density in destination selection.
+- `nodeSpeedMultiplier`: Scales the node speed.
+- `waitingTimeExponent` and `waitingTimeUpperBound`: Control the waiting time distribution.
+- `randomSeed`: Seed for random number generation.
+
+**Expected Output:**  
+A trace file (e.g., `trace.csv`) that logs simulation events with node IDs, timestamps, and positions (x and y coordinates).
+
+**Important Features:**
+- **Home Attraction:** Nodes tend to return to a home location, creating realistic clustering.
+- **Small-World Characteristics:** Balances local movements with occasional long-range trips.
+- **Event-Driven Simulation:** Uses events to switch between moving and waiting states, capturing dynamic mobility behavior.
+
+---
+
+
+
+
+
+
+
 ## Pursue Mobility Model
 
 This project simulates a **pursuit scenario** where multiple **pursuers** chase a **target** in a 2D space. The target moves randomly, and pursuers coordinate to chase it using a combination of **aggressive, group-based, and random pursuit behaviors**.

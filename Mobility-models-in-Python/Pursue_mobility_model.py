@@ -199,4 +199,4 @@ def read_config(file_path='config.ini'):
 if __name__ == "__main__":
     config = read_config('config.ini')
     pursue_model = Pursue(config)
-    pursue_model.write_scenario_csv("scenario.csv")
+    pursue_model.write_scenario_csv("trace_Pursue.csv")

@@ -34,7 +34,7 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
 5. **Apply the Patch**
    From the root of your Mininet-WiFi directory, apply the patch using:
    ```bash
-   patch -p1 < /path/to/mininet-wifi-mobility.patch
+   patch -p1 < /path/to/mininet_wifi_mobility.patch
    
 6. **Requirements for TIMM mobility model
    The TIMM mobility model requires the Python module **networkx** for parsing and handling the building graph. Please ensure that you have networkx installed on your system. You can install it using one of the 

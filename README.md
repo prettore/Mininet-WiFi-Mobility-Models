@@ -58,12 +58,12 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
   - For further details on the integration process and the design decisions, please check the full project report.
 
 
-# Mobility_models_in_python
-# Pursue Mobility Model
+# Mobility models in python
+## Pursue Mobility Model
 
 This project simulates a **pursuit scenario** where multiple **pursuers** chase a **target** in a 2D space. The target moves randomly, and pursuers coordinate to chase it using a combination of **aggressive, group-based, and random pursuit behaviors**.
 
-## 📌 Model Overview
+### 📌 Model Overview
 
 - **Target** moves randomly in a bounded area, selecting new waypoints.
 - **Pursuers** attempt to chase the target using:
@@ -72,7 +72,7 @@ This project simulates a **pursuit scenario** where multiple **pursuers** chase 
   - **Random variations** to avoid predictable movement.
 ---
 
-## 🚀 Key Features
+### 🚀 Key Features
 
 - **Random Waypoint Movement** for the target.
 - **Adaptive Pursuit Strategy** for the pursuers:
@@ -84,11 +84,11 @@ This project simulates a **pursuit scenario** where multiple **pursuers** chase 
 
 ---
 
-## 📥 Input Parameters
+### 📥 Input Parameters
 
 The simulation parameters are **configured via JSON** (`config_Pursue.json`):
 
-### 🔹 Simulation Settings
+#### 🔹 Simulation Settings
 | Parameter           | Description                                  | Default Value |
 |---------------------|----------------------------------------------|--------------|
 | `max_simulation_time` | Number of frames to simulate              | `100`        |
@@ -96,7 +96,7 @@ The simulation parameters are **configured via JSON** (`config_Pursue.json`):
 | `trace_file`        | Output file for trace data                  | `"pursue_trace.csv"` |
 | `random_seed`       | Seed for reproducibility                    | `1736847152537` |
 
-### 🔹 Target Configuration
+#### 🔹 Target Configuration
 | Parameter         | Description                         | Default Value |
 |------------------|-------------------------------------|--------------|
 | `name`          | Name of the target                  | `"Target"`   |
@@ -105,7 +105,7 @@ The simulation parameters are **configured via JSON** (`config_Pursue.json`):
 | `max_speed`     | Maximum speed of the target        | `1.5`        |
 | `waypoint_bounds` | Movement boundaries               | `[0,500]` for X & Y |
 
-### 🔹 Pursuer Configuration
+#### 🔹 Pursuer Configuration
 Each pursuer has:
 | Parameter  | Description                     |
 |-----------|---------------------------------|
@@ -120,14 +120,14 @@ Example:
 ]
 ```
 
-## 🛠 How It Works
+### 🛠 How It Works
 
-### 1️⃣ Target Movement
+#### 1️⃣ Target Movement
 - Moves towards a **randomly chosen waypoint**.
 - When it reaches its destination, it picks a **new waypoint**.
 - Speed is constrained by `max_speed` from the JSON configuration.
 
-### 2️⃣ Pursuer Movement
+#### 2️⃣ Pursuer Movement
 - Each pursuer:
   - Moves towards the **target** based on an **acceleration factor**.
   - Adjusts movement based on **group dynamics** (staying close to other pursuers).
@@ -135,7 +135,7 @@ Example:
 
 ---
 
-## 📌 Example Run
+### 📌 Example Run
 
 To run the simulation, use:
 
@@ -143,32 +143,32 @@ To run the simulation, use:
 python Pursue_mobility_model.py
 ```
 
-## 📜 Code Structure
+### 📜 Code Structure
 
-### 🔹 Position Class  
+#### 🔹 Position Class  
 > **Represents a (x, y) position with distance calculations.**  
 
 ---
 
-### 🔹 Target Class  
+#### 🔹 Target Class  
 > **Moves randomly using a waypoint approach.**  
 > **Updates position based on speed constraints.**  
 
 ---
 
-### 🔹 Pursuer Class  
+#### 🔹 Pursuer Class  
 > **Pursues the target using aggressive, group, and random movement.**  
 > **Adjusts position based on acceleration factors.**  
 
 ---
 
-### 🔹 update() Function  
+#### 🔹 update() Function  
 > **Updates target and pursuer positions per frame.**  
 > **Plots movement traces.**  
 
-# TIMM: Tactical Indoor Mobility Model
+## TIMM: Tactical Indoor Mobility Model
 
-## 📌 Overview
+### 📌 Overview
 TIMM simulates tactical movement inside a **building graph** while considering constraints like:
 - **Speed limits**
 - **Pausing probabilities**
@@ -179,43 +179,43 @@ The model dynamically adjusts based on these factors and generates a **movement 
 
 ---
 
-## 🚀 Model Explanation
+### 🚀 Model Explanation
 
-### 🔹 `Node` Class
+#### 🔹 `Node` Class
 Each entity in the simulation is represented as a `Node`, which has:
 - **Position** (`position`): Current location in the graph.
 - **Speed** (`max_speed`): Maximum movement speed.
 - **Pausing Probability** (`pause_probability`): Probability of stopping at a node.
 - **Door Opening Time** (`door_opening_time`): Time spent at doors before proceeding.
 
-#### 🏃 Movement Logic
+##### 🏃 Movement Logic
 - A node decides whether to **pause** or move based on `pause_probability`.
 - Movement is constrained by **distance limits** (if set).
 - The node selects a **random neighboring node** within constraints and moves.
 
 ---
 
-### 🔹 `BuildingGraph` Class
+#### 🔹 `BuildingGraph` Class
 Manages the **graph-based layout** of the building:
 - **Nodes** represent locations (rooms, hallways).
 - **Edges** define possible movement paths.
 - **Distance Nodes** (`dynamically_add_distance_nodes`) are inserted to enforce **distance limits**.
 
-#### ⚙️ Key Functions:
+##### ⚙️ Key Functions:
 - `add_vertex(...)` → Adds a node with its neighbors.
 - `get_start_vertex()` → Identifies the starting position.
 - `dynamically_add_distance_nodes(...)` → Adds intermediate nodes if edges exceed `distance_limit`.
 
 ---
 
-## 🛠️ Important Features in the Code
+### 🛠️ Important Features in the Code
 
-### 📌 `parse_building_graph_file(file_path)`
+#### 📌 `parse_building_graph_file(file_path)`
 Parses a **text-based** building graph definition:
 - Reads **node positions** and **edges**.
 - Identifies **StartVertex** as the simulation's entry point.
 
-### 📌 `generate_trace_file(...)`
+#### 📌 `generate_trace_file(...)`
 Generates a **trace file** containing movement history:
 - Nodes start at **StartVertex**.
 - Movement is recorded for `max_steps`.
@@ -223,7 +223,7 @@ Generates a **trace file** containing movement history:
 
 ---
 
-## 🔢 Input Parameters (from `config_TIMM.json`)
+### 🔢 Input Parameters (from `config_TIMM.json`)
 | Parameter               | Description                          | Example Value |
 |-------------------------|--------------------------------------|--------------|
 | `building_graph`        | File containing graph definition    | `building_graph.txt` |
@@ -239,7 +239,7 @@ Generates a **trace file** containing movement history:
 
 
 
-## 🔄 Execution Flow
+### 🔄 Execution Flow
 1️⃣ **Parse Configuration (`config_TIMM.json`)**  
 2️⃣ **Load Building Graph (`building_graph.txt`)**  
 3️⃣ **Dynamically Adjust Graph (if needed)**  
@@ -249,9 +249,9 @@ Generates a **trace file** containing movement history:
 ---
 
 
-# 🏙️ Manhattan Grid Simulation
+## 🏙️ Manhattan Grid Simulation
 
-## 📌 Overview
+### 📌 Overview
 The **Manhattan Grid Simulation** models the movement of nodes in a **Manhattan-like street grid**. Each node moves according to a **random mobility pattern** with configurable speed, pausing probability, and simulation duration.
 
 The model:
@@ -262,9 +262,9 @@ The model:
 
 ---
 
-## 🚀 Model Explanation
+### 🚀 Model Explanation
 
-### 🔹 `ManhattanGrid` Class
+#### 🔹 `ManhattanGrid` Class
 This class defines the Manhattan Grid environment and handles:
 1. **Grid Creation** → Defines a `u × v` street grid.
 2. **Node Initialization** → Places nodes at `(0, 0)` initially.
@@ -272,27 +272,27 @@ This class defines the Manhattan Grid environment and handles:
 4. **Trace File Generation** → Logs movements into a `.txt` file.
 ---
 
-## 🛠️ Important Features in the Code
+### 🛠️ Important Features in the Code
 
-### 📌 `create_grid()`
+#### 📌 `create_grid()`
 - Creates a **Manhattan-style grid** using `u` (horizontal) and `v` (vertical) blocks.
 - Stores all **grid points** as tuples `(x, y)`.
 
-### 📌 `initialize_nodes()`
+#### 📌 `initialize_nodes()`
 - Initializes all **nodes** at **position `(0,0)`**.
 - Assigns **random speeds** between `min_speed` and `max_speed`.
 
-### 📌 `move_node(node)`
+#### 📌 `move_node(node)`
 - Randomly chooses a movement **direction** (`up, down, left, right`).
 - Checks **grid boundaries** before moving.
 - Applies **pause probability** (`pause_prob`), causing nodes to **pause** for a random duration.
 
-### 📌 `simulate()`
+#### 📌 `simulate()`
 - Runs the simulation for `simulation_time / time_step` iterations.
 - Moves each node per time step and records its position.
 - Appends movement history to `trace`.
 
-### 📌 `generate_trace_file(file_name)`
+#### 📌 `generate_trace_file(file_name)`
 - Saves the movement **trace file** in the following format:
     ```txt
     # Time NodeID X Y
@@ -302,7 +302,7 @@ This class defines the Manhattan Grid environment and handles:
     ```
 ---
 
-## 🔢 Input Parameters (from `config_Manhattan.json`)
+### 🔢 Input Parameters (from `config_Manhattan.json`)
 
 | Parameter         | Description                               | Example Value |
 |------------------|-----------------------------------------|--------------|
@@ -318,9 +318,9 @@ This class defines the Manhattan Grid environment and handles:
 
 ---
 
-## 📤 Output
+### 📤 Output
 
-### 📄 **Trace File (`trace_file.txt`)**
+#### 📄 **Trace File (`trace_file.txt`)**
 Stores the movement history of each node:
 ```txt
 # Time NodeID X Y
@@ -332,7 +332,7 @@ Stores the movement history of each node:
 ```
 ---
 
-## 🔄 Execution Flow
+### 🔄 Execution Flow
 
 1️⃣ **Load Configuration**  
    - Read simulation parameters from `config_Manhattan.json`.

@@ -3,10 +3,7 @@
 This repository contains a patch file(mininet_wifi_mobility.patch) that integrates new mobility models into the Mininet-WiFi framework. The patch modifies the following files:
 - `mn_wifi/mobility.py`
 - `mn_wifi/net.py`
-- `examples/mobilityModelPursue.py`
-- `examples/mobilityModelManhattan.py`
-- `examples/mobilityModelTIMM.py`
-- `examples/mobilityModelSWIM.py`
+- `examples/mobilityModel.py`
 - `examples/building_graph.txt`
 
 ## How to Apply the Patch
@@ -23,10 +20,7 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
     It is recommended to backup the original files before applying the patch. Run the following commands:
     - `cp mn_wifi/mobility.py mn_wifi/mobility.py.bak`
     - `cp mn_wifi/net.py mn_wifi/net.py.bak`
-    - `cp examples/mobilityModelPursue.py examples/mobilityModelPursue.py.bak`
-    - `cp examples/mobilityModelManhattan.py examples/mobilityModelManhattan.py.bak`
-    - `cp examples/mobilityModelTIMM.py examples/mobilityModelTIMM.py.bak`
-    - `cp examples/mobilityModelSWIM.py examples/mobilityModelSWIM.py.bak`
+    - `cp examples/mobilityModelPursue.py examples/mobilityModel.py.bak`
     - `cp examples/building_graph.txt examples/building_graph.txt.bak`
 
 3. **Download the Patch File**

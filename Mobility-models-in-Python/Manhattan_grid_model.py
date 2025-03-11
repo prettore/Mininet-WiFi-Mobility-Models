@@ -215,7 +215,7 @@ grid = ManhattanGrid(config)
 nodes = grid.generate()
 
 # Write results to a CSV file with space-separated columns: node_id, time, x, y.
-with open('nodes_trace.csv', 'w', newline='') as file:
+with open('trace_Manhattan.csv', 'w', newline='') as file:
     writer = csv.writer(file, delimiter=' ')
     for node_id, node in enumerate(nodes):
         for time, pos in node.waypoints:

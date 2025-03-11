@@ -1,5 +1,110 @@
+diff --git a/examples/mobilityModel.py b/examples/mobilityModel.py
+index 2916fec4..54004830 100755
+--- a/examples/mobilityModel.py
++++ b/examples/mobilityModel.py
+@@ -2,11 +2,14 @@
+ 
+ 'Setting the position of Nodes and providing mobility using mobility models'
+ import sys
+-
++sys.path.append('/home/wifi/mininet-wifi/mn_wifi')
+ from mininet.log import setLogLevel, info
+ from mn_wifi.cli import CLI
+ from mn_wifi.net import Mininet_wifi
+-
++from mn_wifi.mobility import Pursue
++from mn_wifi.mobility import ManhattanGridMobility
++from mn_wifi.mobility import TIMMMobility
++from mn_wifi.mobility import SWIMMobility
+ 
+ def topology(args):
+     "Create a network."
+@@ -17,6 +20,15 @@ def topology(args):
+                    min_x=10, max_x=30, min_y=50, max_y=70, min_v=5, max_v=10)
+     net.addStation('sta2', mac='00:00:00:00:00:03', ip='10.0.0.3/8',
+                    min_x=60, max_x=70, min_y=10, max_y=20, min_v=1, max_v=5)
++    """Add additional stations if required"""
++    net.addStation('sta3', mac='00:00:00:00:00:04')
++    net.addStation('sta4', mac='00:00:00:00:00:05')
++    net.addStation('sta5', mac='00:00:00:00:00:06')
++    net.addStation('sta6', mac='00:00:00:00:00:07')
++    net.addStation('sta7', mac='00:00:00:00:00:08')
++    net.addStation('sta8', mac='00:00:00:00:00:09')
++
++
+     if '-m' in args:
+         ap1 = net.addAccessPoint('ap1', wlans=2, ssid='ssid1,ssid2', mode='g',
+                                  channel='1', failMode="standalone",
+@@ -31,8 +43,66 @@ def topology(args):
+     if '-p' not in args:
+         net.plotGraph()
+ 
++
++    """
+     net.setMobilityModel(time=0, model='RandomDirection',
+-                         max_x=100, max_y=100, seed=20)
++                         max_x=100, max_y=100, seed=20)"""
++    
++    """Example call for Pursue_mobility_model"""
++    net.setMobilityModel(time=0, model='Pursue', x=100, y=100,
++                        minspeed=10.0, maxspeed=15.0,
++                        aggressiveness=1.0, pursueRandomnessMagnitude=5.0,
++                        random_seed=54764759869 )
++
++    """Example call for Tactical Indooe mobility model
++    net.setMobilityModel(time=0, model='TIMMMobility',
++    x=100, y=100,
++    building_graph='building_graph.txt',
++    Group_size=[2, 2, 2, 2],
++    Group_starttimes=[1.0, 2.0, 3.0, 4.0],
++    Group_endtime=[1.7976931348623157e+308,
++                   1.7976931348623157e+308,
++                   1.7976931348623157e+308,
++                   1.7976931348623157e+308],
++    Group_max_distance=[1.7976931348623157e+308,
++                        1.7976931348623157e+308,
++                        1.7976931348623157e+308,
++                        1.7976931348623157e+308],
++    Graph_max_distance_vertices=1000.0,
++    Group_minimal_size=2,
++    Door_wait_or_opening_time=[16.1, 66.8],
++    Slow_speed=[10.0, 1.0],
++    Fast_speed=[15.0, 2.0],
++    randomSeed=20)"""
++
++
++    """Example call for SWIM model
++    net.setMobilityModel(time=0, model='SWIMMobility',
++    x=100, y=100,
++    nodeRadius=1.0,
++    cellDistanceWeight=1.0,
++    nodeSpeedMultiplier=3.0,
++    waitingTimeExponent=1.0,
++    waitingTimeUpperBound=5.0,
++    randomSeed=123456789)
++    """
++
++
++    """Example call for Manhattan model
++    net.setMobilityModel(time=0, model='ManhattanGridMobility',
++    x=100, y=100,
++    xblocks=5,
++    yblocks=5,
++    updateDist=5.0,
++    turnProb=0.5,
++    speedChangeProb=0.2,
++    minSpeed=0.5,
++    meanSpeed=10.0,
++    speedStdDev=0.2,
++    pauseProb=0.5,
++    maxPause=120.0,
++    randomSeed=20)"""
++    
+ 
+     info("*** Starting network\n")
+     net.build()
 diff --git a/mn_wifi/mobility.py b/mn_wifi/mobility.py
-index cd9ddef0..11f9ee4a 100644
+index cd9ddef0..90f642a3 100644
 --- a/mn_wifi/mobility.py
 +++ b/mn_wifi/mobility.py
 @@ -1,8 +1,19 @@
@@ -158,7 +263,7 @@ index cd9ddef0..11f9ee4a 100644
 +        # we need to convert to nanoseconds
 +        self.tick_time = kwargs.get('timed_model_mob_tick', 1) * 1e9
 +        super().__init__(**kwargs)
-+
+ 
 +    def start_mob_mod(self, mob, nodes, draw):
 +        """
 +        :param mob: mobility params
@@ -188,13 +293,13 @@ index cd9ddef0..11f9ee4a 100644
 +                    # If time() has been exceeded since the while loop check, don't sleep
 +                    sleep(max((next_tick_time - monotonic_ns()) / 1e9, 0))
 +            next_tick_time = next_tick_time + self.tick_time
- 
++
 +
 +class Tracked(Mobility):
      def __init__(self, **kwargs):
          self.start_thread(**kwargs)
  
-@@ -810,6 +945,788 @@ def __iter__(self):
+@@ -810,6 +945,798 @@ def __iter__(self):
              yield np.dstack((x, y))[0]
  
  
@@ -287,6 +392,10 @@ index cd9ddef0..11f9ee4a 100644
 +        for node in self.nodes:
 +            pos = self.random_position()
 +            node.add(0.0, pos)
++    
++     # Open trace file for output.
++        self.traceFile = open("trace_pursue.csv", "w")
++        self.traceFile.write("node_id time x y\n")
 +
 +    def random_position(self):
 +        """Generate a random (x, y) position within the simulation area."""
@@ -343,9 +452,10 @@ index cd9ddef0..11f9ee4a 100644
 +                self.update_node(node)
 +            # For each node, get its position at the current simulation time.
 +            pos_list = []
-+            for node in self.nodes:
++            for idx, node in enumerate(self.nodes):
 +                pos = node.position_at(self.t)
 +                pos_list.append((round(pos.x, 2), round(pos.y, 2), 0.0))
++                self.traceFile.write("{} {:.2f} {:.2f} {:.2f}\n".format(idx, self.t, pos.x, pos.y))
 +            yield pos_list
 +            self.t += output_timestep
 +
@@ -369,7 +479,7 @@ index cd9ddef0..11f9ee4a 100644
 +                 speedChangeProb=0.2, minSpeed=0.5, meanSpeed=3.0,
 +                 speedStdDev=0.2, pauseProb=0.0, maxPause=120.0,
 +                 randomSeed=1739481558215):
-+        # Note: no duration parameter!
++        
 +        self.mob_nodes = mob_nodes
 +        self.nodes_count = len(mob_nodes)
 +        self.x = x
@@ -382,7 +492,6 @@ index cd9ddef0..11f9ee4a 100644
 +        self.minSpeed = minSpeed
 +        self.meanSpeed = meanSpeed
 +        self.speedStdDev = speedStdDev
-+        # In the original code pauseProb is increased by speedChangeProb.
 +        self.pauseProb = pauseProb + speedChangeProb
 +        self.maxPause = maxPause
 +        self.randomSeed = randomSeed
@@ -438,6 +547,10 @@ index cd9ddef0..11f9ee4a 100644
 +
 +        # Set the fixed timestep for continuous updates.
 +        self.timestep = 0.1
++
++     # Open trace file for output.
++        self.traceFile = open("trace_manhattan.csv", "w")
++        self.traceFile.write("node_id time x y\n")
 +
 +    def get_new_pos(self, src, dist, dir):
 +        if dir == 0:  # up
@@ -581,17 +694,18 @@ index cd9ddef0..11f9ee4a 100644
 +        Infinite iterator that yields synchronized positions for all nodes
 +        at fixed timesteps. Each yield is a list of (x, y, 0.0) tuples.
 +        """
++        current_time = 0.0
 +        while True:
 +            positions = []
-+            for state in self.node_state:
++            for idx, state in enumerate(self.node_state):
 +                self.update_node(state, self.timestep)
-+                positions.append((round(state['pos'].x, 2),
-+                                  round(state['pos'].y, 2),
-+                                  0.0))
++                pos = state['pos']
++                positions.append((round(pos.x, 2), round(pos.y, 2), 0.0))
++                # Write trace for each node: node_id, current_time, x, y.
++                self.traceFile.write("{} {:.2f} {:.2f} {:.2f}\n".format(idx, current_time, pos.x, pos.y))
 +            yield positions
-+
-+
-+
++            current_time += self.timestep
++ 
 +
 +class TIMM_Node(object):
 +    def __init__(self, node_id, group_id, slow_speed, fast_speed, rng):
@@ -629,8 +743,6 @@ index cd9ddef0..11f9ee4a 100644
 +        self.mob_nodes = mob_nodes
 +        self.x = x
 +        self.y = y
-+        # Run indefinitely.
-+        self.duration = float('inf')
 +        self.building_graph_file = building_graph
 +        self.Group_size = Group_size
 +        self.Group_starttimes = Group_starttimes
@@ -639,7 +751,6 @@ index cd9ddef0..11f9ee4a 100644
 +        self.Graph_max_distance_vertices = Graph_max_distance_vertices
 +        self.Group_minimal_size = Group_minimal_size
 +        self.Door_wait_or_opening_time = Door_wait_or_opening_time
-+        # Use the first element from speed arrays as in the Java TIMM.
 +        self.slow_speed = Slow_speed[0]
 +        self.fast_speed = Fast_speed[0]
 +        self.randomSeed = randomSeed
@@ -707,7 +818,11 @@ index cd9ddef0..11f9ee4a 100644
 +        for group_id in range(len(self.Group_size)):
 +            start_time = self.Group_starttimes[group_id] if group_id < len(self.Group_starttimes) else 0.0
 +            heapq.heappush(self.event_queue, (start_time, group_id))
-+        # Do NOT call _simulate() here—instead, process events incrementally in __iter__.
++        
++
++       # Open trace file for output.
++        self.traceFile = open("trace_TIMM.csv", "w")
++        self.traceFile.write("node_id time x y\n")
 +
 +    def _parse_building_graph(self, filepath):
 +        g = nx.Graph()
@@ -804,6 +919,7 @@ index cd9ddef0..11f9ee4a 100644
 +                        break
 +                pos = last_wp[1]
 +                positions.append((round(pos[0], 2), round(pos[1], 2), 0.0))
++                self.traceFile.write("{} {:.2f} {:.2f} {:.2f}\n".format(node_id, current_time, pos[0], pos[1]))
 +            yield positions
 +            current_time += timestep
 +
@@ -833,11 +949,10 @@ index cd9ddef0..11f9ee4a 100644
 +    def __init__(self, mob_nodes, x=200.0, y=200.0, nodeRadius=0.1, cellDistanceWeight=0.5, nodeSpeedMultiplier=0.1,
 +                 waitingTimeExponent=2.0, waitingTimeUpperBound=50.0,
 +                 randomSeed=123456789):
-+        # Basic simulation parameters; duration is now set to infinity.
++        
 +        self.nn = len(mob_nodes)
 +        self.area_x = x
 +        self.area_y = y
-+        self.duration = float('inf')
 +        self.nodeRadius = nodeRadius
 +        self.cellDistanceWeight = cellDistanceWeight
 +        self.nodeSpeedMultiplier = nodeSpeedMultiplier
@@ -902,7 +1017,7 @@ index cd9ddef0..11f9ee4a 100644
 +            heapq.heappush(self.eventQueue, Event(EventType.START_WAITING, i, -1, 0.0))
 +
 +        # Open trace file for output (retained as in original implementation).
-+        self.traceFile = open("trace.csv", "w")
++        self.traceFile = open("trace_SWIM.csv", "w")
 +        self.traceFile.write("node_id time x y\n")
 +
 +    def getCellIndexFromPos(self, pos):
@@ -983,7 +1098,7 @@ index cd9ddef0..11f9ee4a 100644
  class StochasticWalk(object):
      def __init__(self, nodes, FL_DISTR, VEL_DISTR, WT_DISTR=None,
                   border_policy='reflect', model=None):
-@@ -1181,6 +2098,17 @@ def random_direction(*args, **kwargs):
+@@ -1181,6 +2108,17 @@ def random_direction(*args, **kwargs):
  def truncated_levy_walk(*args, **kwargs):
      return iter(TruncatedLevyWalk(*args, **kwargs))
  
@@ -1001,7 +1116,7 @@ index cd9ddef0..11f9ee4a 100644
  
  def heterogeneous_truncated_levy_walk(*args, **kwargs):
      return iter(HeterogeneousTruncatedLevyWalk(*args, **kwargs))
-@@ -1200,7 +2128,7 @@ def gauss_markov(nodes, velocity_mean=1., alpha=0.99, variance=1.):
+@@ -1200,7 +2138,7 @@ def gauss_markov(nodes, velocity_mean=1., alpha=0.99, variance=1.):
          The mean velocity
        *alpha*:
          The tuning parameter used to vary the randomness

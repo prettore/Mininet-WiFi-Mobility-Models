@@ -35,13 +35,26 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
    From the root of your Mininet-WiFi directory, apply the patch using:
    ```bash
    patch -p1 < /path/to/mininet-wifi-mobility.patch
+   
+6. **Requirements for TIMM mobility model
+   The TIMM mobility model requires the Python module **networkx** for parsing and handling the building graph. Please ensure that you have networkx installed on your system. You can install it using one of the 
+   following commands:
 
+   ```bash
+   sudo apt-get install python-networkx ```
+
+   or, if you have pip installed:
+   ```bash
+   sudo pip install networkx```
+   Additionally, the TIMM model requires the `building_graph.txt` file, which is included in this repository (Make sure this file is saved in `mininet-wifi/mn_wifiexamples` folder).
+
+   
 7. **Rebuild Mininet-WiFi**
    If necessary, rebuild and reinstall Mininet-WiFi from the root of your Mininet-Wifi directory:
    ```bash
    sudo make install
 
-9. **Run Mininet-WiFi**
+8. **Run Mininet-WiFi**
    You can now run Mininet-WiFi with the new mobility models. For example, to run the Pursue mobility model:
    ```bash
    sudo python mn_wifi/examples/mobilityModelPursue.py

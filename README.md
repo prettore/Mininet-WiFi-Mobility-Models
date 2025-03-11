@@ -33,6 +33,7 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
     Clone this repository to obtain the patch file:
     ```bash
     git clone https://github.com/prettore/Mobility_Models_in_Python.git
+    
     Alternatively, you can download the mininet-wifi-mobility.patch file directly from this repository using the GitHub web interface.
 
 5. **Apply the Patch**

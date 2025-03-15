@@ -121,8 +121,10 @@ TIMM (Tactical Indoor Mobility Model) simulates indoor mobility using a building
 
 **Key Parameters (from `config_TIMM.json`):**
 - `x`, `y`: Dimensions of the simulation area.
+-  `nn`: Number of nodes in the simulation.
 - `Building_graph`: File path to the building graph.
 - `Group_size`: Number of nodes per group.
+- `Group_max_distance`: The maximum walking distance allowed for each group during the simulation.
 - `Group_starttimes` and `Group_endtime`: Timing for group movements.
 - `Slow_speed` and `Fast_speed`: Speed parameters for movement.
 - `Door_wait_or_opening_time`: Delay for door transitions.

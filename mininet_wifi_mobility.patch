@@ -1,110 +1,5 @@
-diff --git a/examples/mobilityModel.py b/examples/mobilityModel.py
-index 2916fec4..54004830 100755
---- a/examples/mobilityModel.py
-+++ b/examples/mobilityModel.py
-@@ -2,11 +2,14 @@
- 
- 'Setting the position of Nodes and providing mobility using mobility models'
- import sys
--
-+sys.path.append('/home/wifi/mininet-wifi/mn_wifi')
- from mininet.log import setLogLevel, info
- from mn_wifi.cli import CLI
- from mn_wifi.net import Mininet_wifi
--
-+from mn_wifi.mobility import Pursue
-+from mn_wifi.mobility import ManhattanGridMobility
-+from mn_wifi.mobility import TIMMMobility
-+from mn_wifi.mobility import SWIMMobility
- 
- def topology(args):
-     "Create a network."
-@@ -17,6 +20,15 @@ def topology(args):
-                    min_x=10, max_x=30, min_y=50, max_y=70, min_v=5, max_v=10)
-     net.addStation('sta2', mac='00:00:00:00:00:03', ip='10.0.0.3/8',
-                    min_x=60, max_x=70, min_y=10, max_y=20, min_v=1, max_v=5)
-+    """Add additional stations if required"""
-+    net.addStation('sta3', mac='00:00:00:00:00:04')
-+    net.addStation('sta4', mac='00:00:00:00:00:05')
-+    net.addStation('sta5', mac='00:00:00:00:00:06')
-+    net.addStation('sta6', mac='00:00:00:00:00:07')
-+    net.addStation('sta7', mac='00:00:00:00:00:08')
-+    net.addStation('sta8', mac='00:00:00:00:00:09')
-+
-+
-     if '-m' in args:
-         ap1 = net.addAccessPoint('ap1', wlans=2, ssid='ssid1,ssid2', mode='g',
-                                  channel='1', failMode="standalone",
-@@ -31,8 +43,66 @@ def topology(args):
-     if '-p' not in args:
-         net.plotGraph()
- 
-+
-+    """
-     net.setMobilityModel(time=0, model='RandomDirection',
--                         max_x=100, max_y=100, seed=20)
-+                         max_x=100, max_y=100, seed=20)"""
-+    
-+    """Example call for Pursue_mobility_model"""
-+    net.setMobilityModel(time=0, model='Pursue', x=100, y=100,
-+                        minspeed=10.0, maxspeed=15.0,
-+                        aggressiveness=1.0, pursueRandomnessMagnitude=5.0,
-+                        random_seed=54764759869 )
-+
-+    """Example call for Tactical Indooe mobility model
-+    net.setMobilityModel(time=0, model='TIMMMobility',
-+    x=100, y=100,
-+    building_graph='building_graph.txt',
-+    Group_size=[2, 2, 2, 2],
-+    Group_starttimes=[1.0, 2.0, 3.0, 4.0],
-+    Group_endtime=[1.7976931348623157e+308,
-+                   1.7976931348623157e+308,
-+                   1.7976931348623157e+308,
-+                   1.7976931348623157e+308],
-+    Group_max_distance=[1.7976931348623157e+308,
-+                        1.7976931348623157e+308,
-+                        1.7976931348623157e+308,
-+                        1.7976931348623157e+308],
-+    Graph_max_distance_vertices=1000.0,
-+    Group_minimal_size=2,
-+    Door_wait_or_opening_time=[16.1, 66.8],
-+    Slow_speed=[10.0, 1.0],
-+    Fast_speed=[15.0, 2.0],
-+    randomSeed=20)"""
-+
-+
-+    """Example call for SWIM model
-+    net.setMobilityModel(time=0, model='SWIMMobility',
-+    x=100, y=100,
-+    nodeRadius=1.0,
-+    cellDistanceWeight=1.0,
-+    nodeSpeedMultiplier=3.0,
-+    waitingTimeExponent=1.0,
-+    waitingTimeUpperBound=5.0,
-+    randomSeed=123456789)
-+    """
-+
-+
-+    """Example call for Manhattan model
-+    net.setMobilityModel(time=0, model='ManhattanGridMobility',
-+    x=100, y=100,
-+    xblocks=5,
-+    yblocks=5,
-+    updateDist=5.0,
-+    turnProb=0.5,
-+    speedChangeProb=0.2,
-+    minSpeed=0.5,
-+    meanSpeed=10.0,
-+    speedStdDev=0.2,
-+    pauseProb=0.5,
-+    maxPause=120.0,
-+    randomSeed=20)"""
-+    
- 
-     info("*** Starting network\n")
-     net.build()
 diff --git a/mn_wifi/mobility.py b/mn_wifi/mobility.py
-index cd9ddef0..90f642a3 100644
+index cd9ddef0..f9f2a1a1 100644
 --- a/mn_wifi/mobility.py
 +++ b/mn_wifi/mobility.py
 @@ -1,8 +1,19 @@
@@ -127,7 +22,49 @@ index cd9ddef0..90f642a3 100644
  from threading import Thread as thread
  from time import sleep, time
  from os import system as sh, getpid
-@@ -257,8 +268,10 @@ def start_thread(self, **kwargs):
+@@ -16,6 +27,27 @@
+ from mn_wifi.plot import PlotGraph
+ from mn_wifi.wmediumdConnector import w_cst, wmediumd_mode
+ 
++def export_mobility_trace_from_nodes(nodes, filename):
++    trace_entries = []
++    for node_id, node in enumerate(nodes):
++        # If the node has a recorded history in 'positions', iterate over it.
++        if hasattr(node, "positions") and node.positions:
++            for t, pos in node.positions:
++                if isinstance(pos, (tuple, list)):
++                    trace_entries.append((node_id, t, pos[0], pos[1]))
++                elif hasattr(pos, "x") and hasattr(pos, "y"):
++                    trace_entries.append((node_id, t, pos.x, pos.y))
++        else:
++            print("No recorded positions for node {}".format(node.name))
++    if not trace_entries:
++        print("No mobility trace data found!")
++        return
++
++    with open(filename, "w", buffering=1) as f:
++        f.write("node_id,time,x,y\n")
++        for entry in trace_entries:
++            f.write("{},{:.2f},{:.2f},{:.2f}\n".format(entry[0], entry[1], entry[2], entry[3]))
++
+ 
+ class Mobility(object):
+     aps = []
+@@ -63,6 +95,13 @@ def calculate_diff_time(self, node, time=0):
+ 
+     def set_pos(self, node, pos):
+         node.position = pos
++        if not hasattr(node, "positions"):
++            node.positions = []
++        node.positions.append((time(), pos))
++        
++
++        # Record the current time and position.
++        
+         if wmediumd_mode.mode == w_cst.INTERFERENCE_MODE and self.thread_._keep_alive:
+             node.set_pos_wmediumd(pos)
+ 
+@@ -257,8 +296,10 @@ def start_thread(self, **kwargs):
          self.set_wifi_params()
  
      def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
@@ -140,7 +77,7 @@ index cd9ddef0..90f642a3 100644
          "Used when a mobility model is set"
          np.random.seed(seed)
          self.ac = kwargs.get('ac_method', None)
-@@ -279,8 +292,16 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
+@@ -279,8 +320,16 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
          # list/tuple/set args are allowed to be empty. Please raise an issue or add special handling
          # if necessary.
          model_args = dict()
@@ -159,7 +96,7 @@ index cd9ddef0..90f642a3 100644
          for argument in kwargs:
              if argument in model_arg_names:
                  if isinstance(kwargs[argument], float):
-@@ -291,6 +312,7 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
+@@ -291,6 +340,7 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
                      if kwargs[argument]:
                          model_args[argument] = kwargs[argument]
  
@@ -167,10 +104,12 @@ index cd9ddef0..90f642a3 100644
          if draw:
              nodes = mob_nodes + stat_nodes
              PlotGraph(nodes=nodes, max_x=max_x, max_y=max_y, **kwargs)
-@@ -312,6 +334,83 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
+@@ -312,6 +362,85 @@ def models(self, stations=None, aps=None, stat_nodes=None, mob_nodes=None,
              mob = truncated_levy_walk(mob_nodes)
          elif mob_model == 'RandomDirection':  # Random Direction model
              mob = random_direction(mob_nodes, dimensions=(max_x, max_y))
++            
++
 +        elif mob_model == 'Pursue':
 +            model_args.setdefault('x', max_x)
 +            model_args.setdefault('y', max_y)
@@ -251,7 +190,7 @@ index cd9ddef0..90f642a3 100644
          elif mob_model == 'RandomWayPoint':  # Random Waypoint model
              for node in mob_nodes:
                  array_ = ['constantVelocity', 'constantDistance',
-@@ -376,9 +475,45 @@ def start_mob_mod(self, mob, nodes, draw):
+@@ -376,9 +505,45 @@ def start_mob_mod(self, mob, nodes, draw):
                  pass
  
  
@@ -299,7 +238,7 @@ index cd9ddef0..90f642a3 100644
      def __init__(self, **kwargs):
          self.start_thread(**kwargs)
  
-@@ -810,6 +945,798 @@ def __iter__(self):
+@@ -810,6 +975,800 @@ def __iter__(self):
              yield np.dstack((x, y))[0]
  
  
@@ -394,8 +333,8 @@ index cd9ddef0..90f642a3 100644
 +            node.add(0.0, pos)
 +    
 +     # Open trace file for output.
-+        self.traceFile = open("trace_pursue.csv", "w")
-+        self.traceFile.write("node_id time x y\n")
++        """self.traceFile = open("mobility_trace.csv", "w", buffering = 1)
++        self.traceFile.write("node_id time x y\n")"""
 +
 +    def random_position(self):
 +        """Generate a random (x, y) position within the simulation area."""
@@ -455,7 +394,9 @@ index cd9ddef0..90f642a3 100644
 +            for idx, node in enumerate(self.nodes):
 +                pos = node.position_at(self.t)
 +                pos_list.append((round(pos.x, 2), round(pos.y, 2), 0.0))
-+                self.traceFile.write("{} {:.2f} {:.2f} {:.2f}\n".format(idx, self.t, pos.x, pos.y))
++                """self.traceFile.write("{} {:.2f} {:.2f} {:.2f}\n".format(idx, self.t, pos.x, pos.y))"""
++            """self.traceFile.flush()  # Ensure the buffer is written out immediately."""
++
 +            yield pos_list
 +            self.t += output_timestep
 +
@@ -1098,7 +1039,7 @@ index cd9ddef0..90f642a3 100644
  class StochasticWalk(object):
      def __init__(self, nodes, FL_DISTR, VEL_DISTR, WT_DISTR=None,
                   border_policy='reflect', model=None):
-@@ -1181,6 +2108,17 @@ def random_direction(*args, **kwargs):
+@@ -1181,6 +2140,17 @@ def random_direction(*args, **kwargs):
  def truncated_levy_walk(*args, **kwargs):
      return iter(TruncatedLevyWalk(*args, **kwargs))
  
@@ -1116,7 +1057,7 @@ index cd9ddef0..90f642a3 100644
  
  def heterogeneous_truncated_levy_walk(*args, **kwargs):
      return iter(HeterogeneousTruncatedLevyWalk(*args, **kwargs))
-@@ -1200,7 +2138,7 @@ def gauss_markov(nodes, velocity_mean=1., alpha=0.99, variance=1.):
+@@ -1200,7 +2170,7 @@ def gauss_markov(nodes, velocity_mean=1., alpha=0.99, variance=1.):
          The mean velocity
        *alpha*:
          The tuning parameter used to vary the randomness
@@ -1125,65 +1066,3 @@ index cd9ddef0..90f642a3 100644
          The randomness variance
      """
      nr_nodes = len(nodes)
-diff --git a/mn_wifi/net.py b/mn_wifi/net.py
-index e4da4c5d..03cd60ef 100644
---- a/mn_wifi/net.py
-+++ b/mn_wifi/net.py
-@@ -171,6 +171,38 @@ def __init__(self, accessPoint=OVSKernelAP, station=Station, car=Car,
-         self.epoch = []
-         self.velocity = ()
-         self.initial_mediums = []
-+        self.minspeed = 0.5
-+        self.maxspeed = 1.5
-+        self.aggressiveness = 0.5
-+        self.pursueRandomnessMagnitude = 0.5
-+        self.xblocks = 10
-+        self.yblocks = 10
-+        self.updateDist = 5.0
-+        self.turnProb = 0.5
-+        self.speedChangeProb = 0.2
-+        self.minSpeed = 0.5       # Note: ensure this name does not conflict with 'minspeed'
-+        self.meanSpeed = 3.0
-+        self.speedStdDev = 0.2
-+        self.pauseProb = 0.0
-+        self.maxPause = 120.0
-+        self.building_graph = 'building_graph.txt'
-+        self.Group_size = [1, 1, 1, 1]
-+        self.Group_starttimes = [1.0, 2.0, 3.0, 4.0]
-+        self.Group_endtime = [float('inf'), float('inf'), float('inf'), float('inf')]
-+        self.Group_max_distance = [float('inf')]*4
-+        self.Graph_max_distance_vertices = 1000.0
-+        self.Group_minimal_size = 2
-+        self.Door_wait_or_opening_time = [16.1, 66.8]
-+        self.Slow_speed = [10.0, 1.0]
-+        self.Fast_speed = [15.0, 2.0]
-+        self.nodeRadius = 0.1
-+        self.cellDistanceWeight = 0.5
-+        self.nodeSpeedMultiplier = 0.1
-+        self.waitingTimeExponent = 2.0
-+        self.waitingTimeUpperBound = 50.0
-+        self.x = 100.0
-+        self.y = 100.0
-+        self.random_seed = 1
- 
-         if autoSetPositions and link == wmediumd:
-             self.wmediumd_mode = interference
-@@ -1275,12 +1307,16 @@ def get_mobility_params(self):
-                       'max_x', 'max_y', 'max_z',
-                       'min_v', 'max_v', 'min_wt', 'max_wt',
-                       'velocity_mean', 'alpha', 'variance', 'aggregation',
--                      'g_velocity']
-+                      'g_velocity', 'minspeed', 'maxspeed', 'aggressiveness', 'pursueRandomnessMagnitude', 
-+                      'updateDist', 'turnProb', 'speedChangeProb', 'minSpeed', 'meanSpeed', 'speedStdDev', 
-+                      'pauseProb', 'maxPause', 'nodeRadius', 'cellDistanceWeight', 'nodeSpeedMultiplier', 'waitingTimeExponent', 'waitingTimeUpperBound']
-         args = ['stations', 'cars', 'aps', 'draw', 'seed',
-                 'roads', 'mob_start_time', 'mob_stop_time',
-                 'links', 'mob_model', 'mob_rep', 'reverse',
-                 'ac_method', 'pointlist', 'n_groups', 'aggregation_epoch', 'epoch',
--                'velocity']
-+                'velocity', 'xblocks', 'yblocks', 'x', 'y', 'random_seed',
-+                'building_graph', 'Group_size', 'Group_starttimes', 'Group_endtime', 'Group_max_distance',
-+                'Graph_max_distance_vertices', 'Group_minimal_size', 'Door_wait_or_opening_time', 'Slow_speed', 'Fast_speed']
-         args += float_args
-         for arg in args:
-             if arg in float_args:

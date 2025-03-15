@@ -48,7 +48,7 @@ Follow these steps to apply the patch to your existing Mininet-WiFi installation
    ```bash
    sudo pip install networkx
    ```
-   Additionally, the TIMM model requires the `building_graph.txt` file, which is included in this repository (Make sure this file is saved in `mininet-wifi/mn_wifiexamples` folder).
+   Additionally, the TIMM model requires the `building_graph.txt` file, which is included in this repository (Make sure this file is saved in `mininet-wifi/mn_wifi/examples` folder).
 
    
 7. **Rebuild Mininet-WiFi**

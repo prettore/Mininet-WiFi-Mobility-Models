@@ -1,3 +1,157 @@
+diff --git a/examples/mobilityModel.py b/examples/mobilityModel.py
+index 2916fec4..801adb6f 100755
+--- a/examples/mobilityModel.py
++++ b/examples/mobilityModel.py
+@@ -2,21 +2,35 @@
+ 
+ 'Setting the position of Nodes and providing mobility using mobility models'
+ import sys
+-
++"""sys.path.append('/home/wifi/mininet-wifi/mn_wifi')"""
+ from mininet.log import setLogLevel, info
+ from mn_wifi.cli import CLI
+ from mn_wifi.net import Mininet_wifi
+-
++from mn_wifi.mobility import Pursue
++from mn_wifi.mobility import export_mobility_trace_from_nodes
++"""from mn_wifi.mobility import ManhattanGridMobility
++from mn_wifi.mobility import TIMMMobility
++from mn_wifi.mobility import SWIMMobility"""
+ 
+ def topology(args):
+     "Create a network."
+     net = Mininet_wifi()
++    
+ 
+     info("*** Creating nodes\n")
+     net.addStation('sta1', mac='00:00:00:00:00:02', ip='10.0.0.2/8',
+                    min_x=10, max_x=30, min_y=50, max_y=70, min_v=5, max_v=10)
+     net.addStation('sta2', mac='00:00:00:00:00:03', ip='10.0.0.3/8',
+                    min_x=60, max_x=70, min_y=10, max_y=20, min_v=1, max_v=5)
++    """Add additional stations if required"""
++    net.addStation('sta3', mac='00:00:00:00:00:04')
++    net.addStation('sta4', mac='00:00:00:00:00:05')
++    net.addStation('sta5', mac='00:00:00:00:00:06')
++    net.addStation('sta6', mac='00:00:00:00:00:07')
++    net.addStation('sta7', mac='00:00:00:00:00:08')
++    net.addStation('sta8', mac='00:00:00:00:00:09')
++
++
+     if '-m' in args:
+         ap1 = net.addAccessPoint('ap1', wlans=2, ssid='ssid1,ssid2', mode='g',
+                                  channel='1', failMode="standalone",
+@@ -25,24 +39,106 @@ def topology(args):
+         ap1 = net.addAccessPoint('ap1', ssid='new-ssid', mode='g', channel='1',
+                                  failMode="standalone", position='50,50,0')
+ 
++    info("*** Configuring propagation model\n")
++    net.setPropagationModel(model="logDistance", exp=8)
++
++
+     info("*** Configuring nodes\n")
+     net.configureNodes()
+ 
+     if '-p' not in args:
+-        net.plotGraph()
++        net.plotGraph(max_x=200, max_y=200)
++
++    """net.setMobilityModel(time=0, model='RandomDirection',
++                         max_x=100, max_y=100, seed=20)"""
++    
++    """Example call for Pursue_mobility_model"""
++    net.setMobilityModel(time=0,
++                        x=100, y=100, model= 'Pursue',
++                        minspeed=10.0, maxspeed=15.0,
++                        aggressiveness=1.0, pursueRandomnessMagnitude=5.0,
++                        random_seed=54764759869 )
++
+ 
+-    net.setMobilityModel(time=0, model='RandomDirection',
+-                         max_x=100, max_y=100, seed=20)
++
++
++    """Example call for Tactical Indooe mobility model
++    net.setMobilityModel(time=0, model='TIMMMobility',
++    x=100, y=100,
++    building_graph='building_graph.txt',
++    Group_size=[2, 2, 2, 2],
++    Group_starttimes=[1.0, 2.0, 3.0, 4.0],
++    Group_endtime=[1.7976931348623157e+308,
++                   1.7976931348623157e+308,
++                   1.7976931348623157e+308,
++                   1.7976931348623157e+308],
++    Group_max_distance=[1.7976931348623157e+308,
++                        1.7976931348623157e+308,
++                        1.7976931348623157e+308,
++                        1.7976931348623157e+308],
++    Graph_max_distance_vertices=1000.0,
++    Group_minimal_size=2,
++    Door_wait_or_opening_time=[16.1, 66.8],
++    Slow_speed=[10.0, 1.0],
++    Fast_speed=[15.0, 2.0],
++    randomSeed=20)"""
++
++
++    """Example call for SWIM model
++    net.setMobilityModel(time=0, model='SWIMMobility',
++    x=100, y=100,
++    nodeRadius=1.0,
++    cellDistanceWeight=1.0,
++    nodeSpeedMultiplier=3.0,
++    waitingTimeExponent=1.0,
++    waitingTimeUpperBound=5.0,
++    randomSeed=123456789)
++    """
++
++
++    """Example call for Manhattan model
++    net.setMobilityModel(time=0, model='ManhattanGridMobility',
++    x=100, y=100,
++    xblocks=5,
++    yblocks=5,
++    updateDist=5.0,
++    turnProb=0.5,
++    speedChangeProb=0.2,
++    minSpeed=0.5,
++    meanSpeed=10.0,
++    speedStdDev=0.2,
++    pauseProb=0.5,
++    maxPause=120.0,
++    randomSeed=20)"""
++    
+ 
+     info("*** Starting network\n")
+     net.build()
+     ap1.start([])
++    
++    try:
++        info("*** Running CLI\n")
++        CLI(net)
++    except KeyboardInterrupt:
++        # The user has interrupted the CLI.
++        pass
++    finally:
++        info("*** Stopping network\n")
++        net.stop()
++        # After stopping the network and before exporting the trace:
++        print("Exporting mobility trace from net.stations...")
++        export_mobility_trace_from_nodes(net.stations, "mobility_trace.csv")
++
++        
++
++       
++       
+ 
+-    info("*** Running CLI\n")
++    """info("*** Running CLI\n")
+     CLI(net)
+ 
+     info("*** Stopping network\n")
+-    net.stop()
++    net.stop()"""
+ 
+ 
+ if __name__ == '__main__':
 diff --git a/mn_wifi/mobility.py b/mn_wifi/mobility.py
 index cd9ddef0..f9f2a1a1 100644
 --- a/mn_wifi/mobility.py
@@ -1066,3 +1220,65 @@ index cd9ddef0..f9f2a1a1 100644
          The randomness variance
      """
      nr_nodes = len(nodes)
+diff --git a/mn_wifi/net.py b/mn_wifi/net.py
+index e4da4c5d..03cd60ef 100644
+--- a/mn_wifi/net.py
++++ b/mn_wifi/net.py
+@@ -171,6 +171,38 @@ def __init__(self, accessPoint=OVSKernelAP, station=Station, car=Car,
+         self.epoch = []
+         self.velocity = ()
+         self.initial_mediums = []
++        self.minspeed = 0.5
++        self.maxspeed = 1.5
++        self.aggressiveness = 0.5
++        self.pursueRandomnessMagnitude = 0.5
++        self.xblocks = 10
++        self.yblocks = 10
++        self.updateDist = 5.0
++        self.turnProb = 0.5
++        self.speedChangeProb = 0.2
++        self.minSpeed = 0.5       # Note: ensure this name does not conflict with 'minspeed'
++        self.meanSpeed = 3.0
++        self.speedStdDev = 0.2
++        self.pauseProb = 0.0
++        self.maxPause = 120.0
++        self.building_graph = 'building_graph.txt'
++        self.Group_size = [1, 1, 1, 1]
++        self.Group_starttimes = [1.0, 2.0, 3.0, 4.0]
++        self.Group_endtime = [float('inf'), float('inf'), float('inf'), float('inf')]
++        self.Group_max_distance = [float('inf')]*4
++        self.Graph_max_distance_vertices = 1000.0
++        self.Group_minimal_size = 2
++        self.Door_wait_or_opening_time = [16.1, 66.8]
++        self.Slow_speed = [10.0, 1.0]
++        self.Fast_speed = [15.0, 2.0]
++        self.nodeRadius = 0.1
++        self.cellDistanceWeight = 0.5
++        self.nodeSpeedMultiplier = 0.1
++        self.waitingTimeExponent = 2.0
++        self.waitingTimeUpperBound = 50.0
++        self.x = 100.0
++        self.y = 100.0
++        self.random_seed = 1
+ 
+         if autoSetPositions and link == wmediumd:
+             self.wmediumd_mode = interference
+@@ -1275,12 +1307,16 @@ def get_mobility_params(self):
+                       'max_x', 'max_y', 'max_z',
+                       'min_v', 'max_v', 'min_wt', 'max_wt',
+                       'velocity_mean', 'alpha', 'variance', 'aggregation',
+-                      'g_velocity']
++                      'g_velocity', 'minspeed', 'maxspeed', 'aggressiveness', 'pursueRandomnessMagnitude', 
++                      'updateDist', 'turnProb', 'speedChangeProb', 'minSpeed', 'meanSpeed', 'speedStdDev', 
++                      'pauseProb', 'maxPause', 'nodeRadius', 'cellDistanceWeight', 'nodeSpeedMultiplier', 'waitingTimeExponent', 'waitingTimeUpperBound']
+         args = ['stations', 'cars', 'aps', 'draw', 'seed',
+                 'roads', 'mob_start_time', 'mob_stop_time',
+                 'links', 'mob_model', 'mob_rep', 'reverse',
+                 'ac_method', 'pointlist', 'n_groups', 'aggregation_epoch', 'epoch',
+-                'velocity']
++                'velocity', 'xblocks', 'yblocks', 'x', 'y', 'random_seed',
++                'building_graph', 'Group_size', 'Group_starttimes', 'Group_endtime', 'Group_max_distance',
++                'Graph_max_distance_vertices', 'Group_minimal_size', 'Door_wait_or_opening_time', 'Slow_speed', 'Fast_speed']
+         args += float_args
+         for arg in args:
+             if arg in float_args:

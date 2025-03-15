@@ -27,6 +27,27 @@ from mn_wifi.associationControl import AssociationControl as AssCtrl
 from mn_wifi.plot import PlotGraph
 from mn_wifi.wmediumdConnector import w_cst, wmediumd_mode
 
+def export_mobility_trace_from_nodes(nodes, filename):
+    trace_entries = []
+    for node_id, node in enumerate(nodes):
+        # If the node has a recorded history in 'positions', iterate over it.
+        if hasattr(node, "positions") and node.positions:
+            for t, pos in node.positions:
+                if isinstance(pos, (tuple, list)):
+                    trace_entries.append((node_id, t, pos[0], pos[1]))
+                elif hasattr(pos, "x") and hasattr(pos, "y"):
+                    trace_entries.append((node_id, t, pos.x, pos.y))
+        else:
+            print("No recorded positions for node {}".format(node.name))
+    if not trace_entries:
+        print("No mobility trace data found!")
+        return
+
+    with open(filename, "w", buffering=1) as f:
+        f.write("node_id,time,x,y\n")
+        for entry in trace_entries:
+            f.write("{},{:.2f},{:.2f},{:.2f}\n".format(entry[0], entry[1], entry[2], entry[3]))
+
 
 class Mobility(object):
     aps = []
@@ -74,6 +95,13 @@ class Mobility(object):
 
     def set_pos(self, node, pos):
         node.position = pos
+        if not hasattr(node, "positions"):
+            node.positions = []
+        node.positions.append((time(), pos))
+        
+
+        # Record the current time and position.
+        
         if wmediumd_mode.mode == w_cst.INTERFERENCE_MODE and self.thread_._keep_alive:
             node.set_pos_wmediumd(pos)
 
@@ -334,6 +362,8 @@ class model(Mobility):
             mob = truncated_levy_walk(mob_nodes)
         elif mob_model == 'RandomDirection':  # Random Direction model
             mob = random_direction(mob_nodes, dimensions=(max_x, max_y))
+            
+
         elif mob_model == 'Pursue':
             model_args.setdefault('x', max_x)
             model_args.setdefault('y', max_y)
@@ -1036,8 +1066,8 @@ class Pursue:
             node.add(0.0, pos)
     
      # Open trace file for output.
-        self.traceFile = open("trace_pursue.csv", "w")
-        self.traceFile.write("node_id time x y\n")
+        """self.traceFile = open("mobility_trace.csv", "w", buffering = 1)
+        self.traceFile.write("node_id time x y\n")"""
 
     def random_position(self):
         """Generate a random (x, y) position within the simulation area."""
@@ -1097,7 +1127,9 @@ class Pursue:
             for idx, node in enumerate(self.nodes):
                 pos = node.position_at(self.t)
                 pos_list.append((round(pos.x, 2), round(pos.y, 2), 0.0))
-                self.traceFile.write("{} {:.2f} {:.2f} {:.2f}\n".format(idx, self.t, pos.x, pos.y))
+                """self.traceFile.write("{} {:.2f} {:.2f} {:.2f}\n".format(idx, self.t, pos.x, pos.y))"""
+            """self.traceFile.flush()  # Ensure the buffer is written out immediately."""
+
             yield pos_list
             self.t += output_timestep
 

@@ -2,11 +2,12 @@
 
 'Setting the position of Nodes and providing mobility using mobility models'
 import sys
-sys.path.append('/home/wifi/mininet-wifi/mn_wifi')
+"""sys.path.append('/home/wifi/mininet-wifi/mn_wifi')"""
 from mininet.log import setLogLevel, info
 from mn_wifi.cli import CLI
 from mn_wifi.net import Mininet_wifi
 from mn_wifi.mobility import Pursue
+from mn_wifi.mobility import export_mobility_trace_from_nodes
 from mn_wifi.mobility import ManhattanGridMobility
 from mn_wifi.mobility import TIMMMobility
 from mn_wifi.mobility import SWIMMobility
@@ -14,6 +15,7 @@ from mn_wifi.mobility import SWIMMobility
 def topology(args):
     "Create a network."
     net = Mininet_wifi()
+    
 
     info("*** Creating nodes\n")
     net.addStation('sta1', mac='00:00:00:00:00:02', ip='10.0.0.2/8',
@@ -37,22 +39,28 @@ def topology(args):
         ap1 = net.addAccessPoint('ap1', ssid='new-ssid', mode='g', channel='1',
                                  failMode="standalone", position='50,50,0')
 
+    info("*** Configuring propagation model\n")
+    net.setPropagationModel(model="logDistance", exp=8)
+
+
     info("*** Configuring nodes\n")
     net.configureNodes()
 
     if '-p' not in args:
-        net.plotGraph()
+        net.plotGraph(max_x=200, max_y=200)
 
-
-    """
-    net.setMobilityModel(time=0, model='RandomDirection',
+    """net.setMobilityModel(time=0, model='RandomDirection',
                          max_x=100, max_y=100, seed=20)"""
     
     """Example call for Pursue_mobility_model"""
-    net.setMobilityModel(time=0, model='Pursue', x=100, y=100,
+    net.setMobilityModel(time=0,
+                        x=100, y=100, model= 'Pursue',
                         minspeed=10.0, maxspeed=15.0,
                         aggressiveness=1.0, pursueRandomnessMagnitude=5.0,
                         random_seed=54764759869 )
+
+
+
 
     """Example call for Tactical Indooe mobility model
     net.setMobilityModel(time=0, model='TIMMMobility',
@@ -107,12 +115,25 @@ def topology(args):
     info("*** Starting network\n")
     net.build()
     ap1.start([])
+    
+    try:
+        info("*** Running CLI\n")
+        CLI(net)
+    except KeyboardInterrupt:
+        # The user has interrupted the CLI.
+        pass
+    finally:
+        info("*** Stopping network\n")
+        net.stop()
+        # After stopping the network and before exporting the trace:
+        print("Exporting mobility trace from net.stations...")
+        export_mobility_trace_from_nodes(net.stations, "mobility_trace.csv")      
 
-    info("*** Running CLI\n")
+    """info("*** Running CLI\n")
     CLI(net)
 
     info("*** Stopping network\n")
-    net.stop()
+    net.stop()"""
 
 
 if __name__ == '__main__':

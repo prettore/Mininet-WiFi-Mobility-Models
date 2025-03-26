@@ -163,7 +163,10 @@ A trace file (e.g., `trace_SWIM.csv`) that logs simulation events with node IDs,
 - **Event-Driven Simulation:** Uses events to switch between moving and waiting states, capturing dynamic mobility behavior.
 
 ---
+## Author
 
+Shruthi Devaraj
+Paulo H. L. Rettore
 
 
 

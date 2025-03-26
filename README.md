@@ -166,6 +166,7 @@ A trace file (e.g., `trace_SWIM.csv`) that logs simulation events with node IDs,
 ## Author
 
 Shruthi Devaraj
+
 Paulo H. L. Rettore
 
 
